@@ -1,13 +1,10 @@
 import Image from "next/image";
-import Link from "next/link";
+import NavBar from "./components/NavBar";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <h1>HOME PAGE</h1>
-      <nav>
-        <Link href="/products">Products</Link>
-      </nav>
+    <div className="flex min-h-screen flex-col bg-zinc-50 font-sans text-black">
+      <NavBar />
     </div>
   );
 }
