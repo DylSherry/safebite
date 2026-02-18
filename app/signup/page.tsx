@@ -2,8 +2,7 @@
 
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "../../lib/firebase";
-import { setDoc, doc, serverTimestamp } from "firebase/firestore";
+import { auth } from "../../lib/firebase";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -16,11 +15,20 @@ export default function SignupPage() {
     try {
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCred.user.uid;
-      await setDoc(doc(db, "users", uid), {
-        email,
-        role: "user",
-        createdAt: serverTimestamp(),
+      const token = await userCred.user.getIdToken();
+      // Call server API to create the user document securely
+      const res = await fetch("/api/save-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email, uid }),
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error || "Server error creating profile");
+      }
       setStatus("Account created — signed in");
       setEmail("");
       setPassword("");
