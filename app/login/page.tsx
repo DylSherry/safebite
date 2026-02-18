@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -10,6 +11,7 @@ import {
 import { auth } from "../../lib/firebase";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -27,13 +29,14 @@ export default function LoginPage() {
     try {
       if (mode === "signup") {
         await createUserWithEmailAndPassword(auth, email, password);
-        setStatus("Signup successful");
+        setStatus("Signup successful — redirecting...");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
-        setStatus("Signed in");
+        setStatus("Signed in — redirecting...");
       }
       setEmail("");
       setPassword("");
+      setTimeout(() => router.push("/"), 500);
     } catch (err: any) {
       setStatus(err?.message || "Authentication error");
     }

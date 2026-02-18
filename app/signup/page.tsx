@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 
 export default function SignupPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
@@ -29,9 +31,10 @@ export default function SignupPage() {
         const json = await res.json().catch(() => ({}));
         throw new Error(json?.error || "Server error creating profile");
       }
-      setStatus("Account created — signed in");
+      setStatus("Account created — redirecting...");
       setEmail("");
       setPassword("");
+      setTimeout(() => router.push("/"), 500);
     } catch (err: any) {
       setStatus(err?.message || "Error creating account");
     }
