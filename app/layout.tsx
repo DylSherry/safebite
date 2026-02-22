@@ -25,13 +25,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full bg-zinc-50">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col`}
       >
         <CartProvider>
           <NavBar />
-          {children}
+          <div className="flex flex-1 overflow-hidden">{children}</div>
         </CartProvider>
       </body>
     </html>
