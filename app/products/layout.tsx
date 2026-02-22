@@ -5,5 +5,5 @@ export const metadata = {
 };
 
 export default function ProductsLayout({ children }: { children: React.ReactNode }) {
-  return <div>{children}</div>;
+  return <div className="flex-1 overflow-y-auto bg-emerald-950">{children}</div>;
 }

@@ -46,13 +46,13 @@ export default function ProductsPage() {
   function riskClass(level?: string) {
     switch ((level || "").toLowerCase()) {
       case "high":
-        return "bg-red-100 text-red-800";
+        return "bg-red-500/20 text-red-400";
       case "medium":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-500/20 text-yellow-400";
       case "low":
-        return "bg-green-100 text-green-800";
+        return "bg-green-500/20 text-green-400";
       default:
-        return "bg-zinc-100 text-zinc-800";
+        return "bg-zinc-700 text-zinc-300";
     }
   }
 
@@ -78,49 +78,49 @@ export default function ProductsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen p-8 bg-zinc-50">
-        <h1 className="text-3xl font-semibold mb-6 text-zinc-900">Products</h1>
-        <p className="text-zinc-700">Loading products…</p>
+      <main className="p-8">
+        <h1 className="text-3xl font-semibold mb-6 text-white">Products</h1>
+        <p className="text-emerald-200">Loading products…</p>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main className="min-h-screen p-8 bg-zinc-50">
-        <h1 className="text-3xl font-semibold mb-6 text-zinc-900">Products</h1>
+      <main className="p-8">
+        <h1 className="text-3xl font-semibold mb-6 text-white">Products</h1>
         <p className="text-red-600">{error}</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen p-8 bg-zinc-50">
-      <h1 className="text-3xl font-semibold mb-6 text-zinc-900">Products</h1>
+    <main className="p-8">
+      <h1 className="text-3xl font-semibold mb-6 text-white">Products</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {products.map((p) => (
-          <article key={p.id} className="flex flex-col bg-white rounded-lg shadow p-4 hover:shadow-md">
-            <div className="h-40 w-full mb-4 rounded overflow-hidden bg-zinc-100 flex items-center justify-center">
+          <article key={p.id} className="flex flex-col bg-emerald-900 rounded-lg shadow p-4 hover:shadow-emerald-800/50 hover:shadow-lg border border-emerald-800">
+            <div className="h-40 w-full mb-4 rounded overflow-hidden bg-emerald-800 flex items-center justify-center">
               {p.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
               ) : (
-                <div className="text-zinc-400">No image</div>
+                <div className="text-emerald-400">No image</div>
               )}
             </div>
 
             <div className="mb-2">
-              <h2 className="text-lg font-medium text-zinc-900">{p.name}</h2>
-              {p.brand && <p className="text-sm text-zinc-600">{p.brand}</p>}
-              <p className="text-sm text-zinc-600">R{p.price.toFixed(2)}</p>
+              <h2 className="text-lg font-medium text-white">{p.name}</h2>
+              {p.brand && <p className="text-sm text-emerald-300">{p.brand}</p>}
+              <p className="text-sm text-emerald-300">R{p.price.toFixed(2)}</p>
             </div>
 
             <div className="flex gap-2 mb-3">
               {p.certifications?.map((c) => (
                 <span
                   key={c}
-                  className="inline-flex items-center gap-2 text-xs rounded-full bg-zinc-900 text-white px-2 py-1 shadow-sm"
+                  className="inline-flex items-center gap-2 text-xs rounded-full bg-emerald-800 text-emerald-100 px-2 py-1 shadow-sm"
                 >
                   {c}
                 </span>
@@ -132,7 +132,7 @@ export default function ProductsPage() {
               <button
                 onClick={() => handleQuickAdd(p)}
                 className={`ml-3 rounded px-4 py-2 text-white font-medium transition-colors ${
-                  addedItems.has(p.id) ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
+                  addedItems.has(p.id) ? "bg-green-500 hover:bg-green-600" : "bg-emerald-600 hover:bg-emerald-700"
                 }`}
                 aria-label={`Quick add ${p.name}`}
               >
