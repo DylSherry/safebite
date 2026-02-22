@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { useCart } from "../context/CartContext";
 
 type Product = {
   id: string;
@@ -21,6 +22,8 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+  const { addToCart } = useCart();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -52,6 +55,26 @@ export default function ProductsPage() {
         return "bg-zinc-100 text-zinc-800";
     }
   }
+
+  const handleQuickAdd = (product: Product) => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      brand: product.brand,
+    });
+    
+    // Show visual feedback
+    setAddedItems((prev) => new Set(prev).add(product.id));
+    setTimeout(() => {
+      setAddedItems((prev) => {
+        const next = new Set(prev);
+        next.delete(product.id);
+        return next;
+      });
+    }, 2000);
+  };
 
   if (loading) {
     return (
@@ -107,11 +130,13 @@ export default function ProductsPage() {
             <div className="flex items-center justify-between mt-auto">
               <div className={`rounded-full px-2 py-1 text-xs ${riskClass(p.risk_level)}`}>{p.risk_level || "Unknown"}</div>
               <button
-                onClick={() => alert(`${p.name} added (placeholder)`)}
-                className="ml-3 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                onClick={() => handleQuickAdd(p)}
+                className={`ml-3 rounded px-4 py-2 text-white font-medium transition-colors ${
+                  addedItems.has(p.id) ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
+                }`}
                 aria-label={`Quick add ${p.name}`}
               >
-                Quick Add
+                {addedItems.has(p.id) ? "✓ Added" : "Quick Add"}
               </button>
             </div>
           </article>

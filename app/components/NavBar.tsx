@@ -4,15 +4,22 @@ import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "../../lib/firebase";
+import { useCart } from "../context/CartContext";
 
 export default function NavBar() {
   const [email, setEmail] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const { cart } = useCart();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
       setEmail(user?.email ?? null);
     });
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   const handleSignOut = async () => {
@@ -37,6 +44,18 @@ export default function NavBar() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/cart"
+            className="relative text-sm text-zinc-700 hover:text-zinc-900 px-3 py-1"
+          >
+            Cart
+            {mounted && cart.length > 0 && (
+              <span className="absolute top-0 right-0 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+                {cart.length}
+              </span>
+            )}
+          </Link>
+
           {email ? (
             <div className="flex items-center gap-3">
               <div className="text-sm text-zinc-700">Signed in as {email}</div>
