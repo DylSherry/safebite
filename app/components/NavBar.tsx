@@ -32,13 +32,13 @@ export default function NavBar() {
   };
 
   return (
-    <nav className="w-full bg-white/90 backdrop-blur-sm border-b border-zinc-200">
+    <nav className="w-full bg-emerald-900 border-b border-emerald-800">
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/" className="text-xl font-semibold text-zinc-900">
+          <Link href="/" className="text-xl font-semibold text-white">
             SafeBite
           </Link>
-          <Link href="/products" className="text-sm text-zinc-700 hover:text-zinc-900">
+          <Link href="/products" className="text-sm text-emerald-100 hover:text-white">
             Products
           </Link>
         </div>
@@ -46,11 +46,11 @@ export default function NavBar() {
         <div className="flex items-center gap-3">
           <Link
             href="/cart"
-            className="relative text-sm text-zinc-700 hover:text-zinc-900 px-3 py-1"
+            className="relative text-sm text-emerald-100 hover:text-white px-3 py-1"
           >
             Cart
             {mounted && cart.length > 0 && (
-              <span className="absolute top-0 right-0 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+              <span className="absolute top-0 right-0 inline-flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-emerald-600 rounded-full">
                 {cart.length}
               </span>
             )}
@@ -58,20 +58,20 @@ export default function NavBar() {
 
           {email ? (
             <div className="flex items-center gap-3">
-              <div className="text-sm text-zinc-700">Signed in as {email}</div>
+              <div className="text-sm text-emerald-100">Signed in as {email}</div>
               <button
                 onClick={handleSignOut}
-                className="text-sm rounded bg-zinc-100 px-2 py-1 text-zinc-800 hover:bg-zinc-200"
+                className="text-sm rounded bg-emerald-800 px-2 py-1 text-emerald-100 hover:bg-emerald-700"
               >
                 Sign out
               </button>
             </div>
           ) : (
             <>
-              <Link href="/login" className="text-sm text-zinc-700 hover:text-zinc-900">
+              <Link href="/login" className="text-sm text-emerald-100 hover:text-white">
                 Login
               </Link>
-              <Link href="/signup" className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700">
+              <Link href="/signup" className="rounded bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700">
                 Sign up
               </Link>
             </>
