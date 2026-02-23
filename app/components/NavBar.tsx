@@ -5,11 +5,13 @@ import React, { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import { useCart } from "../context/CartContext";
+import { useUserProfile } from "../hooks/useUserProfile";
 
 export default function NavBar() {
   const [email, setEmail] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const { cart } = useCart();
+  const { profile } = useUserProfile();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -58,7 +60,14 @@ export default function NavBar() {
 
           {email ? (
             <div className="flex items-center gap-3">
-              <div className="text-sm text-emerald-100">Signed in as {email}</div>
+              <Link href="/profile" className="text-sm text-emerald-100 hover:text-white">
+                Profile
+              </Link>
+              {profile?.role === "admin" && (
+                <Link href="/admin" className="text-sm text-yellow-300 hover:text-yellow-200 font-medium">
+                  Admin
+                </Link>
+              )}
               <button
                 onClick={handleSignOut}
                 className="text-sm rounded bg-emerald-800 px-2 py-1 text-emerald-100 hover:bg-emerald-700"

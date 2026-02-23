@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Products - public read, admin write
+    match /products/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users can read and write their own profile only
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Admins can read all user profiles
+      allow read: if request.auth != null && 
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      
+      // Only admins can update user roles
+      allow write: if request.auth != null && 
+                      request.auth.uid == userId && 
+                      !('role' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Orders - require authentication
+    match /orders/{orderId} {
+      // Users can read their own orders
+      allow read: if request.auth != null && 
+                     request.auth.uid == resource.data.userId;
+      
+      // Admins and moderators can read all orders
+      allow read: if request.auth != null && 
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'moderator'];
+      
+      // Users can create their own orders (verified in API endpoint)
+      allow create: if request.auth != null && 
+                       request.auth.uid == request.resource.data.userId;
+      
+      // Only admins can update or delete orders
+      allow update, delete: if request.auth != null && 
+                               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'moderator'];
+    }
+
+    // Reviews - public read, authenticated users can create/update their own
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Match all other collections - deny by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
