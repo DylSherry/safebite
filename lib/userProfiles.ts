@@ -53,6 +53,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 
   const data = docSnap.data();
   return {
+    uid, // Explicitly include uid from parameter
     ...data,
     createdAt: data.createdAt?.toDate?.() || new Date(),
     updatedAt: data.updatedAt?.toDate?.() || new Date(),
