@@ -38,8 +38,8 @@ export default function NavBar() {
           <Link href="/" className="text-xl font-semibold text-white">
             SafeBite
           </Link>
-          <Link href="/products" className="text-sm text-emerald-100 hover:text-white">
-            Products
+          <Link href="/" className="text-sm text-emerald-100 hover:text-white">
+            Browse
           </Link>
         </div>
 

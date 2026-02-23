@@ -55,7 +55,7 @@ export default function Home() {
       image_url: product.image_url,
       brand: product.brand,
     });
-    
+
     setAddedItems((prev) => new Set(prev).add(product.id));
     setTimeout(() => {
       setAddedItems((prev) => {
@@ -67,43 +67,78 @@ export default function Home() {
   };
 
   const filteredProducts = products.filter((product) => {
-    const allergens = (product.allergens || []).map(a => a.toLowerCase());
-    
+    const allergens = (product.allergens || []).map((a) => a.toLowerCase());
+
     if (filters.nutFree) {
-      if (allergens.some(a => a.includes("nut") || a.includes("peanut") || a.includes("almond") || a.includes("cashew") || a.includes("pecan") || a.includes("walnut"))) return false;
+      if (
+        allergens.some(
+          (a) =>
+            a.includes("nut") ||
+            a.includes("peanut") ||
+            a.includes("almond") ||
+            a.includes("cashew") ||
+            a.includes("pecan") ||
+            a.includes("walnut")
+        )
+      )
+        return false;
     }
-    
+
     if (filters.dairyFree) {
-      if (allergens.some(a => a.includes("milk") || a.includes("dairy") || a.includes("cheese") || a.includes("cream") || a.includes("yogurt") || a.includes("whey") || a.includes("casein"))) return false;
+      if (
+        allergens.some(
+          (a) =>
+            a.includes("milk") ||
+            a.includes("dairy") ||
+            a.includes("cheese") ||
+            a.includes("cream") ||
+            a.includes("yogurt") ||
+            a.includes("whey") ||
+            a.includes("casein")
+        )
+      )
+        return false;
     }
-    
+
     if (filters.glutenFree) {
-      if (allergens.some(a => a.includes("wheat") || a.includes("gluten") || a.includes("barley") || a.includes("rye"))) return false;
+      if (allergens.some((a) => a.includes("wheat") || a.includes("gluten") || a.includes("barley") || a.includes("rye")))
+        return false;
     }
-    
+
     return true;
   });
 
   const toggleFilter = (key: keyof typeof filters) => {
-    setFilters(prev => ({ ...prev, [key]: !prev[key] }));
+    setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  function riskClass(level?: string) {
+    switch ((level || "").toLowerCase()) {
+      case "high":
+        return "bg-red-500/20 text-red-400";
+      case "medium":
+        return "bg-yellow-500/20 text-yellow-400";
+      case "low":
+        return "bg-green-500/20 text-green-400";
+      default:
+        return "bg-zinc-700 text-zinc-300";
+    }
+  }
 
   return (
     <>
       {/* Left Sidebar for filters */}
-      <aside className="w-64 flex-shrink-0 border-r border-emerald-800 bg-emerald-900 p-6 overflow-y-auto hidden md:block">
+      <aside className="w-64 shrink-0 border-r border-emerald-800 bg-emerald-900 p-6 overflow-y-auto hidden md:block">
         <h2 className="text-lg font-semibold mb-4 text-white">Filters</h2>
         <div className="space-y-6">
           <div>
-            <h3 className="font-medium text-sm text-emerald-100 mb-2">
-              Allergens
-            </h3>
+            <h3 className="font-medium text-sm text-emerald-100 mb-2">Allergens</h3>
             <div className="space-y-2">
               <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
                   checked={filters.nutFree}
-                  onChange={() => toggleFilter('nutFree')}
+                  onChange={() => toggleFilter("nutFree")}
                   className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
                 />
                 <span className="ml-2 text-sm text-emerald-200">Nut-free</span>
@@ -112,7 +147,7 @@ export default function Home() {
                 <input
                   type="checkbox"
                   checked={filters.dairyFree}
-                  onChange={() => toggleFilter('dairyFree')}
+                  onChange={() => toggleFilter("dairyFree")}
                   className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
                 />
                 <span className="ml-2 text-sm text-emerald-200">Dairy-free</span>
@@ -121,7 +156,7 @@ export default function Home() {
                 <input
                   type="checkbox"
                   checked={filters.glutenFree}
-                  onChange={() => toggleFilter('glutenFree')}
+                  onChange={() => toggleFilter("glutenFree")}
                   className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
                 />
                 <span className="ml-2 text-sm text-emerald-200">Gluten-free</span>
@@ -131,57 +166,74 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* Main middle section for recommended items */}
+      {/* Main middle section with all products */}
       <main className="flex-1 p-6 overflow-y-auto bg-emerald-950">
-        <h1 className="text-2xl font-bold mb-6 text-white">
-          Recommended for You
-        </h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {loading ? (
-            <p className="text-emerald-200 col-span-full">Loading recommendations...</p>
-          ) : filteredProducts.length === 0 ? (
-            <p className="text-emerald-200 col-span-full">No products match your filters.</p>
-          ) : (
-            filteredProducts.map((p) => (
-              <div
+        <h1 className="text-3xl font-bold mb-6 text-white">All Products</h1>
+
+        {loading ? (
+          <p className="text-emerald-200">Loading products…</p>
+        ) : filteredProducts.length === 0 ? (
+          <p className="text-emerald-200">No products match your filters.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {filteredProducts.map((p) => (
+              <article
                 key={p.id}
-                className="border border-emerald-800 rounded-lg p-4 bg-emerald-900 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+                className="flex flex-col bg-emerald-900 rounded-lg shadow p-4 hover:shadow-emerald-800/50 hover:shadow-lg border border-emerald-800"
               >
-                <div className="w-full h-32 bg-emerald-800 rounded-md mb-4 overflow-hidden flex items-center justify-center">
+                <div className="h-40 w-full mb-4 rounded overflow-hidden bg-emerald-800 flex items-center justify-center">
                   {p.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-emerald-600 text-xs">No Image</span>
+                    <div className="text-emerald-400">No image</div>
                   )}
                 </div>
-                <h3 className="font-semibold text-white">{p.name}</h3>
-                <p className="text-sm text-emerald-200 mt-1">R{p.price.toFixed(2)}</p>
-                <button
-                  onClick={() => handleQuickAdd(p)}
-                  className={`mt-4 w-full rounded px-4 py-2 text-sm text-white font-medium transition-colors ${
-                    addedItems.has(p.id) ? "bg-green-500 hover:bg-green-600" : "bg-emerald-600 hover:bg-emerald-700"
-                  }`}
-                >
-                  {addedItems.has(p.id) ? "✓ Added" : "Add to Cart"}
-                </button>
-              </div>
-            ))
-          )}
-        </div>
+
+                <div className="mb-2">
+                  <h2 className="text-lg font-medium text-white">{p.name}</h2>
+                  {p.brand && <p className="text-sm text-emerald-300">{p.brand}</p>}
+                  <p className="text-sm text-emerald-300">R{p.price.toFixed(2)}</p>
+                </div>
+
+                <div className="flex gap-2 mb-3">
+                  {p.certifications?.map((c) => (
+                    <span
+                      key={c}
+                      className="inline-flex items-center gap-2 text-xs rounded-full bg-emerald-800 text-emerald-100 px-2 py-1 shadow-sm"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between mt-auto">
+                  <div className={`rounded-full px-2 py-1 text-xs ${riskClass(p.risk_level)}`}>
+                    {p.risk_level || "Unknown"}
+                  </div>
+                  <button
+                    onClick={() => handleQuickAdd(p)}
+                    className={`ml-3 rounded px-4 py-2 text-white font-medium transition-colors ${
+                      addedItems.has(p.id) ? "bg-green-500 hover:bg-green-600" : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                    aria-label={`Quick add ${p.name}`}
+                  >
+                    {addedItems.has(p.id) ? "✓ Added" : "Quick Add"}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Right Sidebar for safety monitor */}
-      <aside className="w-72 flex-shrink-0 border-l border-emerald-800 bg-emerald-900 p-6 overflow-y-auto hidden lg:block">
-        <h2 className="text-lg font-semibold mb-4 text-white">
-          Safety Monitor
-        </h2>
+      <aside className="w-72 shrink-0 border-l border-emerald-800 bg-emerald-900 p-6 overflow-y-auto hidden lg:block">
+        <h2 className="text-lg font-semibold mb-4 text-white">Safety Monitor</h2>
         <div className="space-y-4">
           <div className="rounded-lg bg-emerald-800 p-4">
             <h3 className="font-semibold text-white">All Good!</h3>
-            <p className="text-sm text-emerald-200">
-              Your cart items are safe for your profile.
-            </p>
+            <p className="text-sm text-emerald-200">Your cart items are safe for your profile.</p>
           </div>
         </div>
       </aside>

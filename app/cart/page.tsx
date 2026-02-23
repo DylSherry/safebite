@@ -28,7 +28,7 @@ export default function CartPage() {
         <h1 className="text-3xl font-semibold mb-6 text-white">Shopping Cart</h1>
         <div className="flex flex-col items-center justify-center py-12">
           <p className="text-emerald-300 mb-6">Your cart is empty</p>
-          <Link href="/products" className="rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700">
+          <Link href="/" className="rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700">
             Continue Shopping
           </Link>
         </div>
