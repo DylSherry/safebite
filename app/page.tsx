@@ -1,4 +1,93 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { useCart } from "./context/CartContext";
+
+type Product = {
+  id: string;
+  name: string;
+  brand?: string;
+  price: number;
+  stock?: number;
+  image_url?: string;
+  allergens?: string[];
+  certifications?: string[];
+  ingredients?: string;
+  risk_level?: string;
+};
+
 export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    nutFree: false,
+    dairyFree: false,
+    glutenFree: false,
+  });
+  const { addToCart } = useCart();
+  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const q = query(collection(db, "products"), orderBy("name"));
+        const snap = await getDocs(q);
+        const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Product[];
+        setProducts(items);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const handleQuickAdd = (product: Product) => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      brand: product.brand,
+    });
+    
+    setAddedItems((prev) => new Set(prev).add(product.id));
+    setTimeout(() => {
+      setAddedItems((prev) => {
+        const next = new Set(prev);
+        next.delete(product.id);
+        return next;
+      });
+    }, 2000);
+  };
+
+  const filteredProducts = products.filter((product) => {
+    const allergens = (product.allergens || []).map(a => a.toLowerCase());
+    
+    if (filters.nutFree) {
+      if (allergens.some(a => a.includes("nut") || a.includes("peanut") || a.includes("almond") || a.includes("cashew") || a.includes("pecan") || a.includes("walnut"))) return false;
+    }
+    
+    if (filters.dairyFree) {
+      if (allergens.some(a => a.includes("milk") || a.includes("dairy") || a.includes("cheese") || a.includes("cream") || a.includes("yogurt") || a.includes("whey") || a.includes("casein"))) return false;
+    }
+    
+    if (filters.glutenFree) {
+      if (allergens.some(a => a.includes("wheat") || a.includes("gluten") || a.includes("barley") || a.includes("rye"))) return false;
+    }
+    
+    return true;
+  });
+
+  const toggleFilter = (key: keyof typeof filters) => {
+    setFilters(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <>
       {/* Left Sidebar for filters */}
@@ -10,26 +99,32 @@ export default function Home() {
               Allergens
             </h3>
             <div className="space-y-2">
-              <label className="flex items-center">
+              <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
+                  checked={filters.nutFree}
+                  onChange={() => toggleFilter('nutFree')}
                   className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
                 />
-                <span className="ml-2 text-sm text-emerald-200">Peanuts</span>
+                <span className="ml-2 text-sm text-emerald-200">Nut-free</span>
               </label>
-              <label className="flex items-center">
+              <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
+                  checked={filters.dairyFree}
+                  onChange={() => toggleFilter('dairyFree')}
                   className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
                 />
-                <span className="ml-2 text-sm text-emerald-200">Dairy</span>
+                <span className="ml-2 text-sm text-emerald-200">Dairy-free</span>
               </label>
-              <label className="flex items-center">
+              <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
+                  checked={filters.glutenFree}
+                  onChange={() => toggleFilter('glutenFree')}
                   className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
                 />
-                <span className="ml-2 text-sm text-emerald-200">Gluten</span>
+                <span className="ml-2 text-sm text-emerald-200">Gluten-free</span>
               </label>
             </div>
           </div>
@@ -42,20 +137,37 @@ export default function Home() {
           Recommended for You
         </h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {/* Example product card */}
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="border border-emerald-800 rounded-lg p-4 bg-emerald-900 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="w-full h-32 bg-emerald-800 rounded-md mb-4"></div>
-              <h3 className="font-semibold text-white">Product Name</h3>
-              <p className="text-sm text-emerald-200 mt-1">R99.99</p>
-              <button className="mt-4 w-full rounded bg-emerald-600 px-4 py-2 text-sm text-white font-medium hover:bg-emerald-700">
-                Add to Cart
-              </button>
-            </div>
-          ))}
+          {loading ? (
+            <p className="text-emerald-200 col-span-full">Loading recommendations...</p>
+          ) : filteredProducts.length === 0 ? (
+            <p className="text-emerald-200 col-span-full">No products match your filters.</p>
+          ) : (
+            filteredProducts.map((p) => (
+              <div
+                key={p.id}
+                className="border border-emerald-800 rounded-lg p-4 bg-emerald-900 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+              >
+                <div className="w-full h-32 bg-emerald-800 rounded-md mb-4 overflow-hidden flex items-center justify-center">
+                  {p.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-emerald-600 text-xs">No Image</span>
+                  )}
+                </div>
+                <h3 className="font-semibold text-white">{p.name}</h3>
+                <p className="text-sm text-emerald-200 mt-1">R{p.price.toFixed(2)}</p>
+                <button
+                  onClick={() => handleQuickAdd(p)}
+                  className={`mt-4 w-full rounded px-4 py-2 text-sm text-white font-medium transition-colors ${
+                    addedItems.has(p.id) ? "bg-green-500 hover:bg-green-600" : "bg-emerald-600 hover:bg-emerald-700"
+                  }`}
+                >
+                  {addedItems.has(p.id) ? "✓ Added" : "Add to Cart"}
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </main>
 
