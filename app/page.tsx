@@ -197,12 +197,12 @@ export default function Home() {
                 </div>
 
                 <div className="flex gap-2 mb-3">
-                  {p.certifications?.map((c) => (
+                  {p.allergens?.map((a) => (
                     <span
-                      key={c}
-                      className="inline-flex items-center gap-2 text-xs rounded-full bg-emerald-800 text-emerald-100 px-2 py-1 shadow-sm"
+                      key={a}
+                      className="inline-flex items-center gap-2 text-xs rounded-full bg-red-900 text-red-100 px-2 py-1 shadow-sm"
                     >
-                      {c}
+                      {a}
                     </span>
                   ))}
                 </div>
