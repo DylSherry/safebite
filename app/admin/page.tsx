@@ -194,9 +194,6 @@ export default function AdminDashboard() {
                 className="rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500 md:col-span-2"
                 rows={2}
               />
-              <div className="md:col-span-2 text-sm text-emerald-200">
-                Safety score: {formData.safety_score ?? computeSafetyScore(formData.allergens)} / 100
-              </div>
               <textarea
                 placeholder="Certifications (comma-separated)"
                 value={(formData.certifications || []).join(", ")}
@@ -204,6 +201,9 @@ export default function AdminDashboard() {
                 className="rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500 md:col-span-2"
                 rows={2}
               />
+              <div className="md:col-span-2 text-sm text-emerald-200">
+                Safety score: {formData.safety_score ?? computeSafetyScore(formData.allergens)} / 100
+              </div>
             </div>
             <button
               onClick={handleSave}
