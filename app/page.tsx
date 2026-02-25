@@ -67,7 +67,10 @@ export default function Home() {
   };
 
   const filteredProducts = products.filter((product) => {
-    const allergens = (product.allergens || []).map((a) => a.toLowerCase());
+    // normalize allergens: lowercase and drop 'none' entries from database
+    const allergens = (product.allergens || [])
+      .map((a) => a.toLowerCase())
+      .filter((a) => a !== "none");
 
     if (filters.nutFree) {
       if (
@@ -112,18 +115,6 @@ export default function Home() {
     setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  function riskClass(level?: string) {
-    switch ((level || "").toLowerCase()) {
-      case "high":
-        return "bg-red-500/20 text-red-400";
-      case "medium":
-        return "bg-yellow-500/20 text-yellow-400";
-      case "low":
-        return "bg-green-500/20 text-green-400";
-      default:
-        return "bg-zinc-700 text-zinc-300";
-    }
-  }
 
   return (
     <>
@@ -197,20 +188,28 @@ export default function Home() {
                 </div>
 
                 <div className="flex gap-2 mb-3">
-                  {p.allergens?.map((a) => (
+                  {/* show allergens unless the only value is "none" or the list is empty */}
+                  {p.allergens && p.allergens.some((a) => a.toLowerCase() !== "none") ? (
+                    p.allergens
+                      .filter((a) => a.toLowerCase() !== "none")
+                      .map((a) => (
+                        <span
+                          key={a}
+                          className="inline-flex items-center gap-2 text-xs rounded-full bg-red-900 text-red-100 px-2 py-1 shadow-sm"
+                        >
+                          {a}
+                        </span>
+                      ))
+                  ) : (
                     <span
-                      key={a}
-                      className="inline-flex items-center gap-2 text-xs rounded-full bg-red-900 text-red-100 px-2 py-1 shadow-sm"
+                      className="inline-flex items-center gap-2 text-xs rounded-full bg-green-900 text-green-100 px-2 py-1 shadow-sm"
                     >
-                      {a}
+                      No allergens
                     </span>
-                  ))}
+                  )}
                 </div>
 
-                <div className="flex items-center justify-between mt-auto">
-                  <div className={`rounded-full px-2 py-1 text-xs ${riskClass(p.risk_level)}`}>
-                    {p.risk_level || "Unknown"}
-                  </div>
+                <div className="flex items-center justify-end mt-auto">
                   <button
                     onClick={() => handleQuickAdd(p)}
                     className={`ml-3 rounded px-4 py-2 text-white font-medium transition-colors ${
