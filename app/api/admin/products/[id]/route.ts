@@ -23,7 +23,13 @@ async function verifyAdmin(idToken: string): Promise<boolean> {
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+function computeSafetyScore(allergens: any) {
+  if (!allergens || !Array.isArray(allergens)) return 100;
+  const count = allergens.filter((a) => typeof a === "string" && a.toLowerCase() !== "none").length;
+  return Math.max(0, 100 - count * 10);
+}
+
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const authHeader = req.headers.get("authorization") || "";
   const idToken = authHeader.replace("Bearer ", "");
 
@@ -32,11 +38,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 
   try {
-    const productId = params.id;
+    const { id: productId } = await params; // unwrap promise
     const body = await req.json();
+    const score = computeSafetyScore(body.allergens);
 
     await db.collection("products").doc(productId).update({
       ...body,
+      safety_score: score,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -45,6 +53,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       product: {
         id: productId,
         ...body,
+        safety_score: score,
       },
     });
   } catch (err) {

@@ -57,19 +57,29 @@ export default function AdminDashboard() {
     }
   };
 
+  function computeSafetyScore(allergens: any) {
+    if (!allergens || !Array.isArray(allergens)) return 100;
+    const count = allergens.filter((a) => typeof a === "string" && a.toLowerCase() !== "none").length;
+    return Math.max(0, 100 - count * 10);
+  }
+
   const handleSave = async () => {
     try {
       const token = await user?.getIdToken();
       const method = editingId ? "PUT" : "POST";
       const endpoint = editingId ? `/api/admin/products/${editingId}` : "/api/admin/products";
 
+      // compute safety score locally so the UI can show it immediately
+      const payload = { ...formData } as any;
+      payload.safety_score = computeSafetyScore(payload.allergens);
+
       const res = await fetch(endpoint, {
         method,
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}` 
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error("Failed to save product");
@@ -173,23 +183,20 @@ export default function AdminDashboard() {
                 onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                 className="rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500 md:col-span-2"
               />
-              <select
-                value={formData.risk_level || ""}
-                onChange={(e) => setFormData({ ...formData, risk_level: e.target.value })}
-                className="rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white"
-              >
-                <option value="">Select Risk Level</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+              {/* risk level removed; safety score auto-calculated */}
               <textarea
                 placeholder="Allergens (comma-separated)"
                 value={(formData.allergens || []).join(", ")}
-                onChange={(e) => setFormData({ ...formData, allergens: e.target.value.split(",").map((a) => a.trim()) })}
+                onChange={(e) => {
+                  const arr = e.target.value.split(",").map((a) => a.trim());
+                  setFormData({ ...formData, allergens: arr });
+                }}
                 className="rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500 md:col-span-2"
                 rows={2}
               />
+              <div className="md:col-span-2 text-sm text-emerald-200">
+                Safety score: {formData.safety_score ?? computeSafetyScore(formData.allergens)} / 100
+              </div>
               <textarea
                 placeholder="Certifications (comma-separated)"
                 value={(formData.certifications || []).join(", ")}
@@ -220,7 +227,7 @@ export default function AdminDashboard() {
                   <th className="px-4 py-3 text-left text-white font-semibold">Brand</th>
                   <th className="px-4 py-3 text-left text-white font-semibold">Price</th>
                   <th className="px-4 py-3 text-left text-white font-semibold">Stock</th>
-                  <th className="px-4 py-3 text-left text-white font-semibold">Risk Level</th>
+                  <th className="px-4 py-3 text-left text-white font-semibold">Safety</th>
                   <th className="px-4 py-3 text-left text-white font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -231,18 +238,8 @@ export default function AdminDashboard() {
                     <td className="px-4 py-3 text-emerald-100">{product.brand || "-"}</td>
                     <td className="px-4 py-3 text-emerald-100">R{product.price.toFixed(2)}</td>
                     <td className="px-4 py-3 text-emerald-100">{product.stock || 0}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${
-                          product.risk_level === "high"
-                            ? "bg-red-900/30 text-red-200"
-                            : product.risk_level === "medium"
-                              ? "bg-yellow-900/30 text-yellow-200"
-                              : "bg-green-900/30 text-green-200"
-                        }`}
-                      >
-                        {product.risk_level || "Unknown"}
-                      </span>
+                    <td className="px-4 py-3 text-emerald-100">
+                      {product.safety_score != null ? product.safety_score : "-"}
                     </td>
                     <td className="px-4 py-3 space-x-2">
                       <button

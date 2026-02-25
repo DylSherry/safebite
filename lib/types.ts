@@ -42,7 +42,8 @@ export interface Product {
   allergens?: string[];
   certifications?: string[];
   ingredients?: string;
-  risk_level?: string;
+  /** 0-100 safety score derived from allergen list (higher is safer) */
+  safety_score?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -15,7 +15,6 @@ type Product = {
   allergens?: string[];
   certifications?: string[];
   ingredients?: string;
-  risk_level?: string;
 };
 
 export default function Home() {

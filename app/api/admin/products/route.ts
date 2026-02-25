@@ -43,6 +43,12 @@ export async function GET(req: Request) {
   }
 }
 
+function computeSafetyScore(allergens: any) {
+  if (!allergens || !Array.isArray(allergens)) return 100;
+  const count = allergens.filter((a) => typeof a === "string" && a.toLowerCase() !== "none").length;
+  return Math.max(0, 100 - count * 10);
+}
+
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") || "";
   const idToken = authHeader.replace("Bearer ", "");
@@ -53,9 +59,11 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
+    const score = computeSafetyScore(body.allergens);
     const docRef = db.collection("products").doc();
     await docRef.set({
       ...body,
+      safety_score: score,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -65,6 +73,7 @@ export async function POST(req: Request) {
       product: {
         id: docRef.id,
         ...body,
+        safety_score: score,
       },
     });
   } catch (err) {
