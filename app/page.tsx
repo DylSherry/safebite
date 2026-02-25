@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useCart } from "./context/CartContext";
+import { useUserProfile } from "./hooks/useUserProfile";
 
 type Product = {
   id: string;
@@ -26,6 +28,8 @@ export default function Home() {
     dairyFree: false,
     glutenFree: false,
   });
+  const [safeForMe, setSafeForMe] = useState(false);
+  const { profile } = useUserProfile();
   const { addToCart, cart } = useCart();
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
 
@@ -97,6 +101,14 @@ export default function Home() {
       .map((a) => a.toLowerCase())
       .filter((a) => a !== "none");
 
+    // filter by safety toggle
+    if (safeForMe && profile) {
+      const userAllergies = (profile.allergies || profile.dietary?.allergies || []).map((a) => a.toLowerCase());
+      if (userAllergies.some((ua) => allergens.includes(ua))) {
+        return false;
+      }
+    }
+
     if (filters.nutFree) {
       if (
         allergens.some(
@@ -136,51 +148,43 @@ export default function Home() {
     return true;
   });
 
-  const toggleFilter = (key: keyof typeof filters) => {
-    setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
 
   return (
     <>
-      {/* Left Sidebar for filters */}
+      {/* Left Sidebar with Safe for me toggle */}
       <aside className="w-64 shrink-0 border-r border-emerald-800 bg-emerald-900 p-6 overflow-y-auto hidden md:block">
-        <h2 className="text-lg font-semibold mb-4 text-white">Filters</h2>
+        <h2 className="text-lg font-semibold mb-4 text-white">Options</h2>
         <div className="space-y-6">
           <div>
-            <h3 className="font-medium text-sm text-emerald-100 mb-2">Allergens</h3>
-            <div className="space-y-2">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.nutFree}
-                  onChange={() => toggleFilter("nutFree")}
-                  className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
-                />
-                <span className="ml-2 text-sm text-emerald-200">Nut-free</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.dairyFree}
-                  onChange={() => toggleFilter("dairyFree")}
-                  className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
-                />
-                <span className="ml-2 text-sm text-emerald-200">Dairy-free</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.glutenFree}
-                  onChange={() => toggleFilter("glutenFree")}
-                  className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
-                />
-                <span className="ml-2 text-sm text-emerald-200">Gluten-free</span>
-              </label>
-            </div>
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={safeForMe}
+                onChange={() => setSafeForMe((v) => !v)}
+                className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="ml-2 text-sm text-emerald-200">Safe for me</span>
+            </label>
+            {safeForMe && (
+              <div className="mt-4 text-sm text-emerald-200">
+                <p>Your allergies:</p>
+                {profile && (profile.allergies || profile.dietary?.allergies || []).length ? (
+                  <ul className="list-disc list-inside">
+                    {(profile.allergies || profile.dietary?.allergies || []).map((a) => (
+                      <li key={a}>{a}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1">None listed</p>
+                )}
+                <Link href="/profile" className="mt-2 inline-block text-xs text-emerald-400 hover:text-emerald-200">
+                  Edit allergies
+                </Link>
+              </div>
+            )}
           </div>
         </div>
-
       </aside>
 
       {/* Main middle section with all products */}
