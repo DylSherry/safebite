@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useUserProfile } from "@/app/hooks/useUserProfile";
 import { useAuthRequired } from "@/app/hooks/useAuthRequired";
+import { signOut } from "firebase/auth";
 
 export default function ProfileManager() {
   const { user, loading: authLoading } = useAuthRequired();
@@ -21,6 +22,15 @@ export default function ProfileManager() {
       setRestrictions(profile.dietary?.restrictions?.join(", ") || "");
     }
   }, [profile]);
+
+  const handleSignOut = async () => {
+    try {
+      const { auth } = await import("../../lib/firebase");
+      await signOut(auth);
+    } catch (err) {
+      console.error("Sign out error:", err);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -213,14 +223,22 @@ export default function ProfileManager() {
           <p>Last Updated: {profile.updatedAt?.toLocaleDateString()}</p>
         </div>
 
-        {isEditing && (
+        <div className="flex justify-between gap-4">
+          {isEditing && (
+            <button
+              onClick={handleSave}
+              className="flex-1 rounded-lg bg-green-600 px-4 py-3 text-white font-medium hover:bg-green-700 transition-colors"
+            >
+              Save Changes
+            </button>
+          )}
           <button
-            onClick={handleSave}
-            className="w-full rounded-lg bg-green-600 px-4 py-3 text-white font-medium hover:bg-green-700 transition-colors"
+            onClick={handleSignOut}
+            className="flex-1 rounded-lg bg-red-600 px-4 py-3 text-white font-medium hover:bg-red-700 transition-colors"
           >
-            Save Changes
+            Sign out
           </button>
-        )}
+        </div>
       </div>
     </main>
   );

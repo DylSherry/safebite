@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import { useCart } from "../context/CartContext";
 import { useUserProfile } from "../hooks/useUserProfile";
@@ -24,14 +24,6 @@ export default function NavBar() {
     setMounted(true);
   }, []);
 
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      setEmail(null);
-    } catch (err) {
-      console.error("Sign out error:", err);
-    }
-  };
 
   return (
     <nav className="w-full bg-emerald-900 border-b border-emerald-800">
@@ -65,12 +57,6 @@ export default function NavBar() {
                   Admin
                 </Link>
               )}
-              <button
-                onClick={handleSignOut}
-                className="text-sm rounded bg-emerald-800 px-2 py-1 text-emerald-100 hover:bg-emerald-700"
-              >
-                Sign out
-              </button>
               <Link href="/profile" aria-label="Profile" className="relative flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white">
                 {profile?.displayName ? (
                   <span className="font-semibold text-sm">
