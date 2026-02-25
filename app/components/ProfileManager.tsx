@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useUserProfile } from "@/app/hooks/useUserProfile";
 import { useAuthRequired } from "@/app/hooks/useAuthRequired";
 import { signOut } from "firebase/auth";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 export default function ProfileManager() {
   const { user, loading: authLoading } = useAuthRequired();
@@ -11,17 +13,43 @@ export default function ProfileManager() {
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [allergies, setAllergies] = useState<string>("");
+  // allergies managed as array of strings
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+  const [availableAllergies, setAvailableAllergies] = useState<string[]>([]);
   const [restrictions, setRestrictions] = useState<string>("");
 
   React.useEffect(() => {
     if (profile) {
       setDisplayName(profile.displayName || "");
       setTheme(profile.preferences?.theme || "light");
-      setAllergies(profile.allergies?.join(", ") || profile.dietary?.allergies?.join(", ") || "");
+      setSelectedAllergies(profile.allergies || profile.dietary?.allergies || []);
       setRestrictions(profile.dietary?.restrictions?.join(", ") || "");
     }
   }, [profile]);
+
+  // fetch unique allergens from products for selection options
+  useEffect(() => {
+    const loadAllergens = async () => {
+      try {
+        const snap = await getDocs(collection(db, "products"));
+        const list: string[] = [];
+        snap.docs.forEach((doc) => {
+          const data: any = doc.data();
+          if (Array.isArray(data.allergens)) {
+            data.allergens.forEach((a: string) => {
+              const low = a.toLowerCase().trim();
+              if (low && low !== "none" && !list.includes(low)) list.push(low);
+            });
+          }
+        });
+        setAvailableAllergies(list.sort());
+      } catch (err) {
+        console.error("Failed to load allergens:", err);
+      }
+    };
+
+    loadAllergens();
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -40,16 +68,10 @@ export default function ProfileManager() {
           ...profile?.preferences,
           theme,
         },
-        allergies: allergies
-          .split(",")
-          .map((a) => a.trim())
-          .filter((a) => a),
+        allergies: selectedAllergies,
         dietary: {
           ...profile?.dietary,
-          allergies: allergies
-            .split(",")
-            .map((a) => a.trim())
-            .filter((a) => a),
+          allergies: selectedAllergies,
           restrictions: restrictions
             .split(",")
             .map((r) => r.trim())
@@ -117,27 +139,36 @@ export default function ProfileManager() {
         <div className="mb-6">
           <h3 className="mb-4 font-semibold text-white text-lg">Allergies</h3>
           <div>
-            <label className="block text-sm font-medium text-emerald-100 mb-2">
-              Your Allergies (comma-separated)
-            </label>
             {isEditing ? (
-              <textarea
-                value={allergies}
-                onChange={(e) => setAllergies(e.target.value)}
-                placeholder="e.g. peanuts, tree nuts, milk"
-                className="w-full rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500 focus:border-emerald-500 focus:outline-none rows-3"
-                rows={3}
-              />
+              <div className="grid grid-cols-2 gap-2">
+                {availableAllergies.map((a) => (
+                  <label key={a} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedAllergies.includes(a)}
+                      onChange={() => {
+                        if (selectedAllergies.includes(a)) {
+                          setSelectedAllergies(selectedAllergies.filter((x) => x !== a));
+                        } else {
+                          setSelectedAllergies([...selectedAllergies, a]);
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-emerald-100 text-sm">{a}</span>
+                  </label>
+                ))}
+              </div>
             ) : (
               <div className="mt-1 rounded-lg bg-emerald-800 px-3 py-2">
-                {allergies ? (
+                {selectedAllergies.length ? (
                   <div className="flex flex-wrap gap-2">
-                    {allergies.split(",").map((allergy, idx) => (
+                    {selectedAllergies.map((allergy, idx) => (
                       <span
                         key={idx}
                         className="inline-block rounded-full bg-red-900/30 text-red-200 px-3 py-1 text-sm border border-red-800"
                       >
-                        {allergy.trim()}
+                        {allergy}
                       </span>
                     ))}
                   </div>
