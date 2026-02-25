@@ -9,6 +9,10 @@ export type CartItem = {
   quantity: number;
   image_url?: string;
   brand?: string;
+  /** list of allergens for this product (normalized) */
+  allergens?: string[];
+  /** cached safety score (0–100) */
+  safety_score?: number;
 };
 
 type CartContextType = {
@@ -51,7 +55,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return [...prev, { ...item, quantity: 1 }];
     });
   };
-
   const removeFromCart = (id: string) => {
     setCart((prev) => prev.filter((p) => p.id !== id));
   };

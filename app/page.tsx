@@ -15,6 +15,7 @@ type Product = {
   allergens?: string[];
   certifications?: string[];
   ingredients?: string;
+  safety_score?: number;
 };
 
 export default function Home() {
@@ -25,7 +26,7 @@ export default function Home() {
     dairyFree: false,
     glutenFree: false,
   });
-  const { addToCart } = useCart();
+  const { addToCart, cart } = useCart();
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -46,6 +47,12 @@ export default function Home() {
     fetchProducts();
   }, []);
 
+  const computeScore = (allergens?: string[]) => {
+    if (!allergens) return 100;
+    const count = allergens.filter((a) => a.toLowerCase() !== "none").length;
+    return Math.max(0, 100 - count * 10);
+  };
+
   const handleQuickAdd = (product: Product) => {
     addToCart({
       id: product.id,
@@ -53,6 +60,8 @@ export default function Home() {
       price: product.price,
       image_url: product.image_url,
       brand: product.brand,
+      allergens: product.allergens,
+      safety_score: product.safety_score ?? computeScore(product.allergens),
     });
 
     setAddedItems((prev) => new Set(prev).add(product.id));
@@ -64,6 +73,23 @@ export default function Home() {
       });
     }, 2000);
   };
+
+  // calculate cart safety metrics
+  const cartSafetyScore = (() => {
+    // average safety score across distinct products (ignore quantity)
+    if (cart.length === 0) return 0;
+    const sum = cart.reduce((acc, i) => acc + (i.safety_score || 0), 0);
+    return sum / cart.length;
+  })();
+
+  const activeCartAllergens = Array.from(
+    new Set(
+      cart
+        .flatMap((i) => i.allergens || [])
+        .map((a) => a.toLowerCase())
+        .filter((a) => a && a !== "none")
+    )
+  );
 
   const filteredProducts = products.filter((product) => {
     // normalize allergens: lowercase and drop 'none' entries from database
@@ -154,6 +180,7 @@ export default function Home() {
             </div>
           </div>
         </div>
+
       </aside>
 
       {/* Main middle section with all products */}
@@ -225,15 +252,35 @@ export default function Home() {
         )}
       </main>
 
-      {/* Right Sidebar for safety monitor */}
+      {/* Right Sidebar for cart safety monitor */}
       <aside className="w-72 shrink-0 border-l border-emerald-800 bg-emerald-900 p-6 overflow-y-auto hidden lg:block">
-        <h2 className="text-lg font-semibold mb-4 text-white">Safety Monitor</h2>
-        <div className="space-y-4">
+        <h2 className="text-lg font-semibold mb-4 text-white">Cart Safety Monitor</h2>
+        {cart.length === 0 ? (
           <div className="rounded-lg bg-emerald-800 p-4">
-            <h3 className="font-semibold text-white">All Good!</h3>
-            <p className="text-sm text-emerald-200">Your cart items are safe for your profile.</p>
+            <h3 className="font-semibold text-white">Cart empty</h3>
+            <p className="text-sm text-emerald-200">Add items to see safety information.</p>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-emerald-800 p-4 text-center">
+              <h3 className="font-semibold text-white">Average Safety</h3>
+              <p className="text-2xl font-bold text-green-300">{cartSafetyScore.toFixed(0)}</p>
+              <p className="text-xs text-emerald-200">out of 100</p>
+            </div>
+            <div className="rounded-lg bg-emerald-800 p-4">
+              <h3 className="font-semibold text-white">Active Allergens</h3>
+              {activeCartAllergens.length > 0 ? (
+                <ul className="list-disc list-inside text-sm text-amber-200">
+                  {activeCartAllergens.map((a) => (
+                    <li key={a}>{a}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-emerald-200">None detected</p>
+              )}
+            </div>
+          </div>
+        )}
       </aside>
     </>
   );
