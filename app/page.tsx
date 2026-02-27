@@ -162,14 +162,22 @@ export default function Home() {
         <h2 className="text-lg font-semibold mb-4 text-white">Options</h2>
         <div className="space-y-6">
           <div>
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={safeForMe}
-                onChange={() => setSafeForMe((v) => !v)}
-                className="h-4 w-4 rounded border-emerald-600 bg-emerald-800 text-emerald-600 focus:ring-emerald-500"
-              />
-              <span className="ml-2 text-sm text-emerald-200">Safe for me</span>
+            <label className="flex items-center justify-between cursor-pointer select-none group">
+              <span className="text-sm font-medium text-emerald-200 group-hover:text-white transition-colors">
+                Safe for me
+              </span>
+              <span className="relative ml-3 flex-shrink-0">
+                <input
+                  type="checkbox"
+                  checked={safeForMe}
+                  onChange={() => setSafeForMe((v) => !v)}
+                  className="sr-only peer"
+                />
+                {/* track */}
+                <span className="block w-10 h-6 rounded-full bg-emerald-800 border border-emerald-700 peer-checked:bg-emerald-500 peer-checked:border-emerald-400 transition-colors duration-200" />
+                {/* thumb */}
+                <span className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-200 peer-checked:translate-x-4" />
+              </span>
             </label>
             {safeForMe && (
               <div className="mt-4 text-sm text-emerald-200">
