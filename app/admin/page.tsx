@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Partial<Product>>({});
   const [status, setStatus] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (profile?.role !== "admin") {
@@ -64,6 +65,8 @@ export default function AdminDashboard() {
   }
 
   const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       const token = await user?.getIdToken();
       const method = editingId ? "PUT" : "POST";
@@ -97,6 +100,8 @@ export default function AdminDashboard() {
       setStatus(editingId ? "Product updated successfully" : "Product created successfully");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -201,15 +206,23 @@ export default function AdminDashboard() {
                 className="rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500 md:col-span-2"
                 rows={2}
               />
+              <textarea
+                placeholder="Ingredients (full ingredients list as text)"
+                value={formData.ingredients || ""}
+                onChange={(e) => setFormData({ ...formData, ingredients: e.target.value })}
+                className="rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500 md:col-span-2"
+                rows={3}
+              />
               <div className="md:col-span-2 text-sm text-emerald-200">
                 Safety score: {formData.safety_score ?? computeSafetyScore(formData.allergens)} / 100
               </div>
             </div>
             <button
               onClick={handleSave}
-              className="mt-4 rounded-lg bg-green-600 px-6 py-2 text-white hover:bg-green-700 transition-colors"
+              disabled={saving}
+              className="mt-4 rounded-lg bg-green-600 px-6 py-2 text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editingId ? "Update Product" : "Create Product"}
+              {saving ? (editingId ? "Updating..." : "Creating...") : (editingId ? "Update Product" : "Create Product")}
             </button>
           </div>
         )}

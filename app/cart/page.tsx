@@ -102,9 +102,12 @@ export default function CartPage() {
             <span>R{total.toFixed(2)}</span>
           </div>
 
-          <button className="w-full rounded bg-emerald-600 px-4 py-2 text-white font-medium hover:bg-emerald-700 mb-3">
+          <Link
+            href="/checkout"
+            className="block w-full rounded bg-emerald-600 px-4 py-2 text-white font-medium hover:bg-emerald-700 mb-3 text-center"
+          >
             Checkout
-          </button>
+          </Link>
 
           <button
             onClick={clearCart}

@@ -64,6 +64,9 @@ export default function NavBar() {
                   Admin
                 </Link>
               )}
+              <Link href="/orders" className="text-sm text-emerald-100 hover:text-white">
+                Orders
+              </Link>
               <Link href="/profile" aria-label="Profile" className="relative flex items-center justify-center w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white">
                 <span className="font-semibold text-sm">
                   {email ? email.charAt(0).toUpperCase() : "?"}
