@@ -11,8 +11,8 @@ export default function ProfileManager() {
   const { user, loading: authLoading } = useAuthRequired();
   const { profile, loading, error, updateProfile } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
-  const [displayName, setDisplayName] = useState("");
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+
   // allergies managed as array of strings
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
   const [availableAllergies, setAvailableAllergies] = useState<string[]>([]);
@@ -20,8 +20,7 @@ export default function ProfileManager() {
 
   React.useEffect(() => {
     if (profile) {
-      setDisplayName(profile.displayName || "");
-      setTheme(profile.preferences?.theme || "light");
+
       setSelectedAllergies(profile.allergies || profile.dietary?.allergies || []);
       setRestrictions(profile.dietary?.restrictions?.join(", ") || "");
     }
@@ -63,11 +62,6 @@ export default function ProfileManager() {
   const handleSave = async () => {
     try {
       await updateProfile({
-        displayName,
-        preferences: {
-          ...profile?.preferences,
-          theme,
-        },
         allergies: selectedAllergies,
         dietary: {
           ...profile?.dietary,
@@ -112,26 +106,7 @@ export default function ProfileManager() {
               <p className="mt-1 rounded bg-emerald-800 px-3 py-2 text-emerald-100">{profile.email}</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-emerald-100">Display Name</label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                />
-              ) : (
-                <p className="mt-1 rounded bg-emerald-800 px-3 py-2 text-emerald-100">{displayName}</p>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-emerald-100">Role</label>
-              <p className="mt-1 inline-block rounded-lg bg-emerald-700 px-3 py-1 text-sm font-medium text-white capitalize">
-                {profile.role}
-              </p>
-            </div>
           </div>
         </div>
 
@@ -213,38 +188,6 @@ export default function ProfileManager() {
                 )}
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Preferences */}
-        <div className="mb-6">
-          <h3 className="mb-4 font-semibold text-white text-lg">Preferences</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-emerald-100 mb-2">Theme</label>
-              {isEditing ? (
-                <select
-                  value={theme}
-                  onChange={(e) => setTheme(e.target.value as "light" | "dark")}
-                  className="w-full rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                >
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                </select>
-              ) : (
-                <p className="mt-1 rounded-lg bg-emerald-800 px-3 py-2 text-emerald-100 capitalize">{theme}</p>
-              )}
-            </div>
-
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={profile.preferences?.emailNotifications || false}
-                disabled={true}
-                className="rounded"
-              />
-              <span className="text-sm text-emerald-100">Email Notifications</span>
-            </label>
           </div>
         </div>
 
