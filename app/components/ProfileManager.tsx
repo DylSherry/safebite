@@ -12,17 +12,14 @@ export default function ProfileManager() {
   const { profile, loading, error, updateProfile } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
 
-
   // allergies managed as array of strings
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
   const [availableAllergies, setAvailableAllergies] = useState<string[]>([]);
-  const [restrictions, setRestrictions] = useState<string>("");
 
   React.useEffect(() => {
     if (profile) {
 
       setSelectedAllergies(profile.allergies || profile.dietary?.allergies || []);
-      setRestrictions(profile.dietary?.restrictions?.join(", ") || "");
     }
   }, [profile]);
 
@@ -66,10 +63,6 @@ export default function ProfileManager() {
         dietary: {
           ...profile?.dietary,
           allergies: selectedAllergies,
-          restrictions: restrictions
-            .split(",")
-            .map((r) => r.trim())
-            .filter((r) => r),
         },
         lastLoginAt: new Date(),
       });
@@ -112,27 +105,50 @@ export default function ProfileManager() {
 
         {/* Allergies */}
         <div className="mb-6">
-          <h3 className="mb-4 font-semibold text-white text-lg">Allergies</h3>
+          <h3 className="mb-1 font-semibold text-white text-lg">Allergies</h3>
           <div>
             {isEditing ? (
-              <div className="grid grid-cols-2 gap-2">
-                {availableAllergies.map((a) => (
-                  <label key={a} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedAllergies.includes(a)}
-                      onChange={() => {
-                        if (selectedAllergies.includes(a)) {
-                          setSelectedAllergies(selectedAllergies.filter((x) => x !== a));
-                        } else {
-                          setSelectedAllergies([...selectedAllergies, a]);
+              <div>
+                <p className="text-xs text-emerald-400 mb-3">Tap an allergen to select or deselect it.</p>
+                {/* Pill chip selector */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {availableAllergies.map((a) => {
+                    const active = selectedAllergies.includes(a);
+                    return (
+                      <button
+                        key={a}
+                        type="button"
+                        onClick={() =>
+                          setSelectedAllergies((prev) =>
+                            active ? prev.filter((x) => x !== a) : [...prev, a]
+                          )
                         }
-                      }}
-                      className="rounded"
-                    />
-                    <span className="text-emerald-100 text-sm">{a}</span>
-                  </label>
-                ))}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium border transition-colors ${
+                          active
+                            ? "bg-red-900 border-red-600 text-red-100"
+                            : "bg-emerald-800 border-emerald-700 text-emerald-300 hover:border-emerald-500 hover:text-white"
+                        }`}
+                      >
+                        {active && (
+                          <svg className="h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                        {a}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedAllergies.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAllergies([])}
+                    className="mt-2 text-xs text-emerald-500 hover:text-red-400 transition-colors"
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
             ) : (
               <div className="mt-1 rounded-lg bg-emerald-800 px-3 py-2">
@@ -141,50 +157,15 @@ export default function ProfileManager() {
                     {selectedAllergies.map((allergy, idx) => (
                       <span
                         key={idx}
-                        className="inline-block rounded-full bg-red-900/30 text-red-200 px-3 py-1 text-sm border border-red-800"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-red-900/40 text-red-200 px-3 py-1 text-sm border border-red-800"
                       >
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-400 inline-block" />
                         {allergy}
                       </span>
                     ))}
                   </div>
                 ) : (
                   <p className="text-emerald-400">No allergies listed</p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Dietary Restrictions */}
-        <div className="mb-6">
-          <h3 className="mb-4 font-semibold text-white text-lg">Dietary Restrictions</h3>
-          <div>
-            <label className="block text-sm font-medium text-emerald-100 mb-2">
-              Restrictions (comma-separated)
-            </label>
-            {isEditing ? (
-              <textarea
-                value={restrictions}
-                onChange={(e) => setRestrictions(e.target.value)}
-                placeholder="e.g. vegetarian, vegan, gluten-free"
-                className="w-full rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500 focus:border-emerald-500 focus:outline-none"
-                rows={3}
-              />
-            ) : (
-              <div className="mt-1 rounded-lg bg-emerald-800 px-3 py-2">
-                {restrictions ? (
-                  <div className="flex flex-wrap gap-2">
-                    {restrictions.split(",").map((restriction, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-block rounded-full bg-yellow-900/30 text-yellow-200 px-3 py-1 text-sm border border-yellow-800"
-                      >
-                        {restriction.trim()}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-emerald-400">No restrictions listed</p>
                 )}
               </div>
             )}
