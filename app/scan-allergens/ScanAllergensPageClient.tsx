@@ -3,7 +3,7 @@ import ScanAllergens from "../components/ScanAllergens";
 
 export default function ScanAllergensPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-emerald-950">
+    <main className="flex flex-1 items-center justify-center p-8">
       <ScanAllergens />
     </main>
   );
