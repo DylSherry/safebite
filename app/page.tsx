@@ -32,6 +32,7 @@ export default function Home() {
     glutenFree: false,
   });
   const [safeForMe, setSafeForMe] = useState(false);
+  const [search, setSearch] = useState("");
   const { profile } = useUserProfile();
   const { addToCart, cart, total } = useCart();
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
@@ -149,6 +150,13 @@ export default function Home() {
     }
 
     return true;
+  }).filter((product) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      product.name.toLowerCase().includes(q) ||
+      (product.brand ?? "").toLowerCase().includes(q)
+    );
   });
 
 
@@ -202,12 +210,66 @@ export default function Home() {
 
       {/* Main middle section with all products */}
       <main className="flex-1 p-6 overflow-y-auto bg-emerald-950">
-        <h1 className="text-3xl font-bold mb-6 text-white">All Products</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h1 className="text-3xl font-bold text-white">All Products</h1>
+          <div className="relative w-full sm:w-72">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-400 pointer-events-none"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search products or brands…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-lg border border-emerald-700 bg-emerald-900 pl-9 pr-4 py-2 text-sm text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 hover:text-white"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
 
         {loading ? (
-          <p className="text-emerald-200">Loading products…</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex flex-col bg-emerald-900 rounded-lg border border-emerald-800 p-4 animate-pulse">
+                <div className="h-40 w-full mb-4 rounded bg-emerald-800" />
+                <div className="h-4 w-3/4 rounded bg-emerald-800 mb-2" />
+                <div className="h-3 w-1/2 rounded bg-emerald-800 mb-2" />
+                <div className="h-3 w-1/4 rounded bg-emerald-800 mb-4" />
+                <div className="flex gap-2 mb-4">
+                  <div className="h-5 w-16 rounded-full bg-emerald-800" />
+                  <div className="h-5 w-16 rounded-full bg-emerald-800" />
+                </div>
+                <div className="mt-auto flex justify-end">
+                  <div className="h-9 w-24 rounded bg-emerald-800" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : filteredProducts.length === 0 ? (
-          <p className="text-emerald-200">No products match your filters.</p>
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <svg className="h-12 w-12 text-emerald-700 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            <p className="text-emerald-200 font-medium mb-1">No products match your filters.</p>
+            <p className="text-emerald-500 text-sm mb-4">Try adjusting your search or dietary filters.</p>
+            <button
+              onClick={() => { setSearch(""); setFilters({ nutFree: false, dairyFree: false, glutenFree: false }); setSafeForMe(false); }}
+              className="rounded-lg border border-emerald-600 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-800 transition-colors"
+            >
+              Clear all filters
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {filteredProducts.map((p) => (
