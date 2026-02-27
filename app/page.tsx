@@ -1,11 +1,14 @@
 "use client";
 
+
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useCart } from "./context/CartContext";
 import { useUserProfile } from "./hooks/useUserProfile";
+import dynamic from "next/dynamic";
+const ScanAllergens = dynamic(() => import("./components/ScanAllergens"), { ssr: false });
 
 type Product = {
   id: string;
@@ -152,6 +155,8 @@ export default function Home() {
 
   return (
     <>
+
+
       {/* Left Sidebar with Safe for me toggle */}
       <aside className="w-64 shrink-0 border-r border-emerald-800 bg-emerald-900 p-6 overflow-y-auto hidden md:block">
         <h2 className="text-lg font-semibold mb-4 text-white">Options</h2>

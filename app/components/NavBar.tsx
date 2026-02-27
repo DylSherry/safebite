@@ -28,12 +28,16 @@ export default function NavBar() {
   return (
     <nav className="w-full bg-emerald-900 border-b border-emerald-800">
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
+
         <div className="flex items-center gap-4">
           <Link href="/" className="text-xl font-semibold text-white">
             SafeBite
           </Link>
           <Link href="/" className="text-sm text-emerald-100 hover:text-white">
             Browse
+          </Link>
+          <Link href="/scan-allergens" className="text-sm text-emerald-100 hover:text-white">
+            Scan Allergens
           </Link>
         </div>
 
