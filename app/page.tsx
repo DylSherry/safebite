@@ -33,7 +33,7 @@ export default function Home() {
   });
   const [safeForMe, setSafeForMe] = useState(false);
   const { profile } = useUserProfile();
-  const { addToCart, cart } = useCart();
+  const { addToCart, cart, total } = useCart();
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -295,6 +295,26 @@ export default function Home() {
               ) : (
                 <p className="text-sm text-emerald-200">None detected</p>
               )}
+            </div>
+
+            {/* Cart total + checkout */}
+            <div className="rounded-lg bg-emerald-800 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-emerald-300">Cart total</span>
+                <span className="text-lg font-bold text-white">R{total.toFixed(2)}</span>
+              </div>
+              <Link
+                href="/checkout"
+                className="block w-full rounded-lg bg-emerald-600 px-4 py-2 text-center text-white font-semibold hover:bg-emerald-500 transition-colors"
+              >
+                Proceed to Checkout
+              </Link>
+              <Link
+                href="/cart"
+                className="block w-full mt-2 rounded-lg border border-emerald-700 px-4 py-2 text-center text-emerald-300 text-sm hover:bg-emerald-800 transition-colors"
+              >
+                View Cart
+              </Link>
             </div>
           </div>
         )}
