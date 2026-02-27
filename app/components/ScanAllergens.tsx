@@ -70,7 +70,8 @@ export default function ScanAllergens() {
         </p>
       </div>
 
-      {/* Upload area */}
+      {/* Upload area — hidden once results are shown */}
+      {!result && (
       <div
         className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${
           dragging ? "border-emerald-400 bg-emerald-800" : "border-emerald-700 bg-emerald-900 hover:border-emerald-500"
@@ -87,22 +88,25 @@ export default function ScanAllergens() {
           onChange={handleFileChange}
           className="hidden"
         />
-        {preview ? (
+        {preview && !result ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={preview} alt="Preview" className="max-h-48 rounded-lg object-contain mb-3" />
-        ) : (
+        ) : !result ? (
           <svg className="w-12 h-12 text-emerald-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
               d="M3 16.5V19a2 2 0 002 2h14a2 2 0 002-2v-2.5M16 10l-4-4m0 0L8 10m4-4v12" />
           </svg>
+        ) : null}
+        {!result && (
+          <p className="text-emerald-300 text-sm">
+            {file ? file.name : "Drag & drop or click to upload an ingredient label"}
+          </p>
         )}
-        <p className="text-emerald-300 text-sm">
-          {file ? file.name : "Drag & drop or click to upload an ingredient label"}
-        </p>
-        {file && (
-          <p className="text-emerald-500 text-xs mt-1">{(file.size / 1024).toFixed(1)} KB</p>
+        {file && !result && (
+          <p className="text-emerald-400 text-xs mt-1">{(file.size / 1024).toFixed(1)} KB</p>
         )}
       </div>
+      )}
 
       {/* Action buttons */}
       <div className="flex gap-3">
@@ -126,7 +130,7 @@ export default function ScanAllergens() {
         {(file || result) && (
           <button
             onClick={handleReset}
-            className="px-4 py-2 rounded-lg border border-emerald-700 text-emerald-300 hover:bg-emerald-800 transition-colors text-sm"
+            className="px-4 py-2 rounded-lg border border-emerald-700 text-emerald-300 hover:bg-emerald-800 transition-colors text-sm font-medium"
           >
             Clear
           </button>
