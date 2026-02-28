@@ -125,7 +125,7 @@ export default function ProfileManager() {
                         }
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium border transition-colors ${
                           active
-                            ? "bg-red-900 border-red-600 text-red-100"
+                            ? "bg-amber-900/70 border-amber-600 text-amber-100"
                             : "bg-emerald-800 border-emerald-700 text-emerald-300 hover:border-emerald-500 hover:text-white"
                         }`}
                       >
@@ -157,9 +157,9 @@ export default function ProfileManager() {
                     {selectedAllergies.map((allergy, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-red-900/40 text-red-200 px-3 py-1 text-sm border border-red-800"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-amber-900/40 text-amber-200 px-3 py-1 text-sm border border-amber-700"
                       >
-                        <span className="h-1.5 w-1.5 rounded-full bg-red-400 inline-block" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" />
                         {allergy}
                       </span>
                     ))}

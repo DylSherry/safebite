@@ -198,9 +198,9 @@ export default function Home() {
                   {(profile?.allergies || profile?.dietary?.allergies || []).map((a) => (
                     <span
                       key={a}
-                      className="inline-flex items-center gap-1 rounded-full bg-red-900/50 border border-red-700 text-red-200 text-xs px-2.5 py-1 font-medium"
+                      className="inline-flex items-center gap-1 rounded-full bg-amber-900/50 border border-amber-700 text-amber-200 text-xs px-2.5 py-1 font-medium"
                     >
-                      <span className="h-1.5 w-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
                       {a}
                     </span>
                   ))}
@@ -306,7 +306,7 @@ export default function Home() {
                   <p className="text-sm text-emerald-300">R{p.price.toFixed(2)}</p>
                 </div>
 
-                <div className="flex gap-2 mb-3">
+                <div className="flex flex-wrap gap-2 mb-3">
                   {/* show allergens unless the only value is "none" or the list is empty */}
                   {p.allergens && p.allergens.some((a) => a.toLowerCase() !== "none") ? (
                     p.allergens
@@ -314,8 +314,9 @@ export default function Home() {
                       .map((a) => (
                         <span
                           key={a}
-                          className="inline-flex items-center gap-2 text-xs rounded-full bg-red-900 text-red-100 px-2 py-1 shadow-sm"
+                          className="inline-flex items-center gap-2 text-xs rounded-full bg-emerald-800 border border-emerald-600 text-white px-2.5 py-1 font-medium"
                         >
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
                           {a}
                         </span>
                       ))
