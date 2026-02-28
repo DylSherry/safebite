@@ -216,6 +216,62 @@ export default function AdminDashboard() {
               <div className="md:col-span-2 text-sm text-emerald-200">
                 Safety score: {formData.safety_score ?? computeSafetyScore(formData.allergens)} / 100
               </div>
+
+              {/* ── Promotion & Merchandising ── */}
+              <div className="md:col-span-2 border-t border-emerald-700 pt-4 mt-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-3">Promotion &amp; Merchandising</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    type="number"
+                    placeholder="Sales Count (for Top Sellers ranking)"
+                    value={formData.salesCount ?? ""}
+                    onChange={(e) => setFormData({ ...formData, salesCount: e.target.value === "" ? undefined : parseInt(e.target.value) })}
+                    className="rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500"
+                    min={0}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Promotion Price (leave blank if not on sale)"
+                    value={formData.promotionPrice ?? ""}
+                    onChange={(e) => setFormData({ ...formData, promotionPrice: e.target.value === "" ? undefined : parseFloat(e.target.value) })}
+                    className="rounded-lg border border-emerald-700 bg-emerald-800 px-3 py-2 text-white placeholder-emerald-500"
+                    min={0}
+                    step={0.01}
+                  />
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <span className="relative shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={!!formData.isOnPromotion}
+                        onChange={(e) => setFormData({ ...formData, isOnPromotion: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <span className="block w-10 h-6 rounded-full bg-emerald-800 border border-emerald-700 peer-checked:bg-amber-500 peer-checked:border-amber-400 transition-colors duration-200" />
+                      <span className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 peer-checked:translate-x-4" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-white">On Promotion</p>
+                      <p className="text-xs text-emerald-400">Show in Promotions strip</p>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <span className="relative shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={!!formData.isFeatured}
+                        onChange={(e) => setFormData({ ...formData, isFeatured: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <span className="block w-10 h-6 rounded-full bg-emerald-800 border border-emerald-700 peer-checked:bg-emerald-500 peer-checked:border-emerald-400 transition-colors duration-200" />
+                      <span className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 peer-checked:translate-x-4" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-white">Featured</p>
+                      <p className="text-xs text-emerald-400">Manually highlight this product</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
             </div>
             <button
               onClick={handleSave}
@@ -241,6 +297,7 @@ export default function AdminDashboard() {
                   <th className="px-4 py-3 text-left text-white font-semibold">Price</th>
                   <th className="px-4 py-3 text-left text-white font-semibold">Stock</th>
                   <th className="px-4 py-3 text-left text-white font-semibold">Safety</th>
+                  <th className="px-4 py-3 text-left text-white font-semibold">Labels</th>
                   <th className="px-4 py-3 text-left text-white font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -253,6 +310,22 @@ export default function AdminDashboard() {
                     <td className="px-4 py-3 text-emerald-100">{product.stock || 0}</td>
                     <td className="px-4 py-3 text-emerald-100">
                       {product.safety_score != null ? product.safety_score : "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {product.isOnPromotion && (
+                          <span className="rounded-full bg-amber-500/20 border border-amber-600 text-amber-300 text-xs px-2 py-0.5 font-medium">Sale</span>
+                        )}
+                        {product.isFeatured && (
+                          <span className="rounded-full bg-emerald-500/20 border border-emerald-600 text-emerald-300 text-xs px-2 py-0.5 font-medium">Featured</span>
+                        )}
+                        {(product.salesCount ?? 0) > 0 && (
+                          <span className="rounded-full bg-emerald-800 border border-emerald-700 text-emerald-400 text-xs px-2 py-0.5">{product.salesCount} sold</span>
+                        )}
+                        {!product.isOnPromotion && !product.isFeatured && !product.salesCount && (
+                          <span className="text-emerald-600 text-xs">—</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 space-x-2">
                       <button

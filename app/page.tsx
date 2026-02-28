@@ -21,6 +21,10 @@ type Product = {
   certifications?: string[];
   ingredients?: string;
   safety_score?: number;
+  salesCount?: number;
+  isOnPromotion?: boolean;
+  promotionPrice?: number;
+  isFeatured?: boolean;
 };
 
 export default function Home() {
@@ -94,6 +98,13 @@ export default function Home() {
 
   // Score based on unique allergens across the whole cart: -10 per distinct allergen
   const cartSafetyScore = cart.length === 0 ? 0 : Math.max(0, 100 - activeCartAllergens.length * 10);
+
+  const topSelling = [...products]
+    .filter((p) => (p.salesCount ?? 0) > 0)
+    .sort((a, b) => (b.salesCount ?? 0) - (a.salesCount ?? 0))
+    .slice(0, 8);
+
+  const onPromotion = products.filter((p) => p.isOnPromotion && p.promotionPrice != null);
 
   const filteredProducts = products.filter((product) => {
     // normalize allergens: lowercase and drop 'none' entries from database
@@ -220,6 +231,103 @@ export default function Home() {
 
       {/* Main middle section with all products */}
       <main className="flex-1 p-6 overflow-y-auto bg-emerald-950">
+
+        {/* ── On Promotion ── */}
+        {!loading && onPromotion.length > 0 && (
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 px-2.5 py-1 text-xs font-bold text-amber-300 uppercase tracking-wider">
+                🏷 On Sale
+              </span>
+              <h2 className="text-lg font-bold text-white">Promotions</h2>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-emerald-700 scrollbar-track-transparent">
+              {onPromotion.map((p) => {
+                const discount = Math.round(((p.price - p.promotionPrice!) / p.price) * 100);
+                return (
+                  <article
+                    key={p.id}
+                    className="flex-shrink-0 w-44 bg-emerald-900 rounded-xl border border-amber-700/50 overflow-hidden hover:shadow-lg hover:shadow-emerald-900/60 transition-shadow"
+                  >
+                    <div className="relative h-28 bg-emerald-800">
+                      {p.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-emerald-500 text-xs">No image</div>
+                      )}
+                      <span className="absolute top-2 right-2 rounded-full bg-amber-500 text-white text-xs font-bold px-2 py-0.5">
+                        -{discount}%
+                      </span>
+                    </div>
+                    <div className="p-3">
+                      <p className="text-white text-sm font-medium truncate">{p.name}</p>
+                      {p.brand && <p className="text-emerald-400 text-xs truncate">{p.brand}</p>}
+                      <div className="flex items-baseline gap-1.5 mt-1.5">
+                        <span className="text-amber-300 font-bold text-sm">R{p.promotionPrice!.toFixed(2)}</span>
+                        <span className="text-emerald-600 text-xs line-through">R{p.price.toFixed(2)}</span>
+                      </div>
+                      <button
+                        onClick={() => handleQuickAdd(p)}
+                        className={`mt-2 w-full rounded-full py-1 text-xs font-semibold transition-colors ${
+                          addedItems.has(p.id) ? "bg-green-500 text-white" : "bg-amber-500 hover:bg-amber-400 text-white"
+                        }`}
+                      >
+                        {addedItems.has(p.id) ? "✓ Added" : "Add to Cart"}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── Top Sellers ── */}
+        {!loading && topSelling.length > 0 && (
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                🔥 Popular
+              </span>
+              <h2 className="text-lg font-bold text-white">Top Sellers</h2>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-emerald-700 scrollbar-track-transparent">
+              {topSelling.map((p, rank) => (
+                <article
+                  key={p.id}
+                  className="flex-shrink-0 w-44 bg-emerald-900 rounded-xl border border-emerald-700 overflow-hidden hover:shadow-lg hover:shadow-emerald-900/60 transition-shadow"
+                >
+                  <div className="relative h-28 bg-emerald-800">
+                    {p.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-emerald-500 text-xs">No image</div>
+                    )}
+                    <span className="absolute top-2 left-2 rounded-full bg-emerald-950/80 text-emerald-300 text-xs font-bold px-2 py-0.5 border border-emerald-700">
+                      #{rank + 1}
+                    </span>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-white text-sm font-medium truncate">{p.name}</p>
+                    {p.brand && <p className="text-emerald-400 text-xs truncate">{p.brand}</p>}
+                    <p className="text-emerald-200 font-bold text-sm mt-1">R{p.price.toFixed(2)}</p>
+                    <button
+                      onClick={() => handleQuickAdd(p)}
+                      className={`mt-2 w-full rounded-full py-1 text-xs font-semibold transition-colors ${
+                        addedItems.has(p.id) ? "bg-green-500 text-white" : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                      }`}
+                    >
+                      {addedItems.has(p.id) ? "✓ Added" : "Add to Cart"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h1 className="text-3xl font-bold text-white">All Products</h1>
           <div className="relative w-full sm:w-72">

@@ -44,6 +44,14 @@ export interface Product {
   ingredients?: string;
   /** 0-100 safety score derived from allergen list (higher is safer) */
   safety_score?: number;
+  /** Approximate lifetime units sold – used to rank top sellers */
+  salesCount?: number;
+  /** Whether this product is currently on promotion */
+  isOnPromotion?: boolean;
+  /** Discounted price shown when isOnPromotion is true */
+  promotionPrice?: number;
+  /** Whether this product is manually featured by an admin */
+  isFeatured?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
