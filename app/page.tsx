@@ -362,7 +362,7 @@ export default function Home() {
             {(() => {
               const score = cartSafetyScore;
               const pct = Math.round(score);
-              const scoreColor = pct >= 80 ? "text-emerald-300" : pct >= 50 ? "text-amber-300" : "text-red-300";
+              const scoreColor = pct >= 80 ? "text-emerald-300" : pct >= 50 ? "text-amber-300" : "text-red-400";
               const barColor = pct >= 80 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500";
               return (
                 <div className="rounded-2xl border border-emerald-800 bg-emerald-950/40 p-4">
