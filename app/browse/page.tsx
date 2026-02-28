@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useCart } from "../context/CartContext";
 import { useUserProfile } from "../hooks/useUserProfile";
 import CartSidebar from "../components/CartSidebar";
+import FilterSidebar from "../components/FilterSidebar";
 
 type Product = {
   id: string;
@@ -23,16 +23,15 @@ type Product = {
   isOnPromotion?: boolean;
   promotionPrice?: number;
   isFeatured?: boolean;
+  category?: string;
 };
 
 export default function BrowsePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    nutFree: false,
-    dairyFree: false,
-    glutenFree: false,
-  });
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [safeForMe, setSafeForMe] = useState(false);
   const [search, setSearch] = useState("");
   const { profile } = useUserProfile();
@@ -82,6 +81,20 @@ export default function BrowsePage() {
     }, 2000);
   };
 
+  const categories = Array.from(
+    new Set(products.map((p) => p.category).filter((c): c is string => !!c))
+  ).sort();
+
+  const toggleCategory = (cat: string) =>
+    setSelectedCategories((prev) => {
+      const next = new Set(prev);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
+      return next;
+    });
+
+  const effectivePrice = (p: Product) =>
+    p.isOnPromotion && p.promotionPrice != null ? p.promotionPrice : p.price;
+
   const filteredProducts = products
     .filter((product) => {
       const allergens = (product.allergens || []).map((a) => a.toLowerCase()).filter((a) => a !== "none");
@@ -89,17 +102,11 @@ export default function BrowsePage() {
         const userAllergies = (profile.allergies || profile.dietary?.allergies || []).map((a) => a.toLowerCase());
         if (userAllergies.some((ua) => allergens.includes(ua))) return false;
       }
-      if (filters.nutFree) {
-        if (allergens.some((a) => a.includes("nut") || a.includes("peanut") || a.includes("almond") || a.includes("cashew") || a.includes("pecan") || a.includes("walnut")))
-          return false;
-      }
-      if (filters.dairyFree) {
-        if (allergens.some((a) => a.includes("milk") || a.includes("dairy") || a.includes("cheese") || a.includes("cream") || a.includes("yogurt") || a.includes("whey") || a.includes("casein")))
-          return false;
-      }
-      if (filters.glutenFree) {
-        if (allergens.some((a) => a.includes("wheat") || a.includes("gluten") || a.includes("barley") || a.includes("rye")))
-          return false;
+      const ep = effectivePrice(product);
+      if (priceMin !== "" && ep < parseFloat(priceMin)) return false;
+      if (priceMax !== "" && ep > parseFloat(priceMax)) return false;
+      if (selectedCategories.size > 0) {
+        if (!product.category || !selectedCategories.has(product.category)) return false;
       }
       return true;
     })
@@ -111,69 +118,23 @@ export default function BrowsePage() {
 
   return (
     <>
-      {/* Left Sidebar – filters */}
-      <aside className="w-64 shrink-0 border-r border-emerald-800 bg-emerald-900 p-5 overflow-y-auto hidden md:flex md:flex-col gap-3">
-        <p className="text-xs font-semibold uppercase tracking-widest text-emerald-500 px-1">Filters</p>
-
-        {/* Safe-for-me */}
-        <div className={`rounded-2xl border p-4 transition-colors ${safeForMe ? "bg-emerald-800/60 border-emerald-600" : "bg-emerald-950/40 border-emerald-800"}`}>
-          <label className="flex items-center justify-between cursor-pointer select-none group">
-            <div>
-              <p className="text-sm font-semibold text-white group-hover:text-emerald-100 transition-colors">Safe for me</p>
-              <p className="text-xs text-emerald-400 mt-0.5">Hide products with your allergens</p>
-            </div>
-            <span className="relative ml-3 shrink-0">
-              <input type="checkbox" checked={safeForMe} onChange={() => setSafeForMe((v) => !v)} className="sr-only peer" />
-              <span className="block w-10 h-6 rounded-full bg-emerald-800 border border-emerald-700 peer-checked:bg-emerald-500 peer-checked:border-emerald-400 transition-colors duration-200" />
-              <span className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-200 peer-checked:translate-x-4" />
-            </span>
-          </label>
-          {safeForMe && (
-            <div className="mt-4 pt-4 border-t border-emerald-700/60">
-              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-2">Your allergens</p>
-              {(profile?.allergies || profile?.dietary?.allergies || []).length ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {(profile?.allergies || profile?.dietary?.allergies || []).map((a) => (
-                    <span key={a} className="inline-flex items-center gap-1 rounded-full bg-amber-900/50 border border-amber-700 text-amber-200 text-xs px-2.5 py-1 font-medium">
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                      {a}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-emerald-400 italic">None listed yet.</p>
-              )}
-              <Link href="/profile" className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-white transition-colors">
-                Edit allergies
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Dietary filters */}
-        <div className="rounded-2xl border border-emerald-800 bg-emerald-950/40 p-4 flex flex-col gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-500">Dietary</p>
-          {(
-            [
-              { key: "nutFree", label: "Nut Free" },
-              { key: "dairyFree", label: "Dairy Free" },
-              { key: "glutenFree", label: "Gluten Free" },
-            ] as { key: keyof typeof filters; label: string }[]
-          ).map(({ key, label }) => (
-            <label key={key} className="flex items-center justify-between cursor-pointer select-none group">
-              <p className="text-sm text-white group-hover:text-emerald-100 transition-colors">{label}</p>
-              <span className="relative ml-3 shrink-0">
-                <input type="checkbox" checked={filters[key]} onChange={() => setFilters((f) => ({ ...f, [key]: !f[key] }))} className="sr-only peer" />
-                <span className="block w-10 h-6 rounded-full bg-emerald-800 border border-emerald-700 peer-checked:bg-emerald-500 peer-checked:border-emerald-400 transition-colors duration-200" />
-                <span className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-200 peer-checked:translate-x-4" />
-              </span>
-            </label>
-          ))}
-        </div>
-      </aside>
+      <FilterSidebar
+        safeForMe={safeForMe}
+        onSafeForMeChange={setSafeForMe}
+        priceMin={priceMin}
+        priceMax={priceMax}
+        onPriceMinChange={setPriceMin}
+        onPriceMaxChange={setPriceMax}
+        categories={categories}
+        selectedCategories={selectedCategories}
+        onToggleCategory={toggleCategory}
+        onClearAll={() => {
+          setSafeForMe(false);
+          setPriceMin("");
+          setPriceMax("");
+          setSelectedCategories(new Set());
+        }}
+      />
 
       {/* Main content */}
       <main className="flex-1 p-6 overflow-y-auto bg-emerald-950">
@@ -220,9 +181,9 @@ export default function BrowsePage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
             </svg>
             <p className="text-emerald-200 font-medium mb-1">No products match your filters.</p>
-            <p className="text-emerald-500 text-sm mb-4">Try adjusting your search or dietary filters.</p>
+            <p className="text-emerald-500 text-sm mb-4">Try adjusting your search or filters.</p>
             <button
-              onClick={() => { setSearch(""); setFilters({ nutFree: false, dairyFree: false, glutenFree: false }); setSafeForMe(false); }}
+              onClick={() => { setSearch(""); setPriceMin(""); setPriceMax(""); setSelectedCategories(new Set()); setSafeForMe(false); }}
               className="rounded-lg border border-emerald-600 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-800 transition-colors"
             >
               Clear all filters

@@ -52,6 +52,8 @@ export interface Product {
   promotionPrice?: number;
   /** Whether this product is manually featured by an admin */
   isFeatured?: boolean;
+  /** Product category, e.g. "Snacks", "Beverages", "Dairy" */
+  category?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
