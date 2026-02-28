@@ -1,7 +1,7 @@
 ﻿"use client";
 
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../lib/firebase";
@@ -9,6 +9,7 @@ import { useCart } from "./context/CartContext";
 import { useUserProfile } from "./hooks/useUserProfile";
 import CartSidebar from "./components/CartSidebar";
 import FilterSidebar from "./components/FilterSidebar";
+import ProductModal from "./components/ProductModal";
 
 
 type Product = {
@@ -32,6 +33,7 @@ type Product = {
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const { profile } = useUserProfile();
   const { addToCart } = useCart();
@@ -40,6 +42,8 @@ export default function Home() {
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+
+  const handleCloseModal = useCallback(() => setSelectedProduct(null), []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -146,7 +150,10 @@ export default function Home() {
     showDiscount?: boolean;
     rank?: number;
   }) => (
-    <article className="shrink-0 w-44 bg-emerald-900 rounded-xl border border-emerald-800 overflow-hidden hover:shadow-lg hover:shadow-emerald-900/60 transition-shadow">
+    <article
+      onClick={() => setSelectedProduct(p)}
+      className="shrink-0 w-44 bg-emerald-900 rounded-xl border border-emerald-800 overflow-hidden hover:shadow-lg hover:shadow-emerald-900/60 transition-shadow cursor-pointer group"
+    >
       <div className="relative h-28 bg-emerald-800">
         {p.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -182,7 +189,7 @@ export default function Home() {
           )}
         </div>
         <button
-          onClick={() => handleQuickAdd(p)}
+          onClick={(e) => { e.stopPropagation(); handleQuickAdd(p); }}
           className={`mt-2 w-full rounded-full py-1.5 text-xs font-semibold transition-colors ${
             addedItems.has(p.id)
               ? "bg-green-500 text-white"
@@ -347,6 +354,15 @@ export default function Home() {
       </main>
 
       <CartSidebar />
+
+      {selectedProduct && (
+        <ProductModal
+          product={selectedProduct}
+          onClose={handleCloseModal}
+          onAddToCart={handleQuickAdd}
+          added={addedItems.has(selectedProduct.id)}
+        />
+      )}
     </>
   );
 }
