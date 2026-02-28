@@ -61,11 +61,11 @@ export default function ScanAllergens() {
   };
 
   return (
-    <div className="w-full max-w-xl flex flex-col gap-6">
+    <div className="w-full max-w-xl flex flex-col gap-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-white mb-1">Allergen Scanner</h1>
-        <p className="text-emerald-300 text-sm">
+        <h1 className="text-3xl font-bold text-white mb-2">Allergen Scanner</h1>
+        <p className="text-emerald-200 text-sm leading-relaxed">
           Upload a photo of an ingredient label and we'll identify allergens using AI.
         </p>
       </div>
@@ -73,8 +73,8 @@ export default function ScanAllergens() {
       {/* Upload area — hidden once results are shown */}
       {!result && (
       <div
-        className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer transition-colors ${
-          dragging ? "border-emerald-400 bg-emerald-800" : "border-emerald-700 bg-emerald-900 hover:border-emerald-500"
+        className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-colors ${
+          dragging ? "border-emerald-400 bg-emerald-800" : "border-emerald-600 bg-emerald-900 hover:border-emerald-400"
         }`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -90,7 +90,7 @@ export default function ScanAllergens() {
         />
         {preview && !result ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="Preview" className="max-h-48 rounded-lg object-contain mb-3" />
+          <img src={preview} alt="Preview" className="max-h-48 rounded-xl object-contain mb-4" />
         ) : !result ? (
           <svg className="w-12 h-12 text-emerald-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -98,12 +98,12 @@ export default function ScanAllergens() {
           </svg>
         ) : null}
         {!result && (
-          <p className="text-emerald-300 text-sm">
+          <p className="text-emerald-200 text-sm">
             {file ? file.name : "Drag & drop or click to upload an ingredient label"}
           </p>
         )}
         {file && !result && (
-          <p className="text-emerald-400 text-xs mt-1">{(file.size / 1024).toFixed(1)} KB</p>
+          <p className="text-emerald-300 text-xs mt-1">{(file.size / 1024).toFixed(1)} KB</p>
         )}
       </div>
       )}
@@ -113,7 +113,7 @@ export default function ScanAllergens() {
         <button
           onClick={handleScan}
           disabled={!file || loading}
-          className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          className="flex-1 px-6 py-3 rounded-full bg-emerald-600 text-white font-semibold hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-md"
         >
           {loading ? (
             <>
@@ -130,7 +130,7 @@ export default function ScanAllergens() {
         {(file || result) && (
           <button
             onClick={handleReset}
-            className="px-4 py-2 rounded-lg border border-emerald-700 text-emerald-300 hover:bg-emerald-800 transition-colors text-sm font-medium"
+            className="px-5 py-3 rounded-full border border-emerald-500 text-emerald-200 hover:bg-emerald-800 hover:border-emerald-400 active:bg-emerald-700 transition-colors text-sm font-medium"
           >
             Clear
           </button>
@@ -139,7 +139,7 @@ export default function ScanAllergens() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg bg-red-900/50 border border-red-700 p-4 text-red-300 text-sm">
+        <div className="rounded-2xl bg-red-900/50 border border-red-700 p-5 text-red-200 text-sm">
           <strong className="block mb-1">Error</strong>
           {error}
         </div>
@@ -147,15 +147,15 @@ export default function ScanAllergens() {
 
       {/* Results */}
       {result && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {/* Allergens Found */}
-          <div className={`rounded-lg p-5 border ${
+          <div className={`rounded-2xl p-6 border ${
             result.allergensFound && result.allergensFound.length > 0
               ? "bg-red-900/40 border-red-700"
               : "bg-green-900/40 border-green-700"
           }`}>
-            <h3 className={`font-semibold text-lg mb-3 ${
-              result.allergensFound && result.allergensFound.length > 0 ? "text-red-300" : "text-green-300"
+            <h3 className={`font-semibold text-lg mb-4 ${
+              result.allergensFound && result.allergensFound.length > 0 ? "text-red-200" : "text-green-200"
             }`}>
               {result.allergensFound && result.allergensFound.length > 0 ? "⚠ Allergens Detected" : "✓ No Allergens Found"}
             </h3>
@@ -172,9 +172,9 @@ export default function ScanAllergens() {
 
           {/* Ingredients list */}
           {result.ingredients && result.ingredients.length > 0 && (
-            <div className="rounded-lg bg-emerald-900 border border-emerald-700 p-5">
-              <h3 className="font-semibold text-emerald-200 mb-3">Ingredients ({result.ingredients.length})</h3>
-              <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-emerald-100">
+            <div className="rounded-2xl bg-emerald-900 border border-emerald-700 p-6">
+              <h3 className="font-semibold text-white mb-4">Ingredients ({result.ingredients.length})</h3>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-emerald-100">
                 {result.ingredients.map((ing: string, i: number) => (
                   <li key={i} className="flex items-start gap-1">
                     <span className="text-emerald-500 mt-0.5">•</span> {ing}
@@ -186,8 +186,8 @@ export default function ScanAllergens() {
 
           {/* Raw fallback */}
           {result.raw && (
-            <div className="rounded-lg bg-emerald-900 border border-emerald-700 p-5">
-              <h3 className="font-semibold text-emerald-200 mb-2">AI Response</h3>
+            <div className="rounded-2xl bg-emerald-900 border border-emerald-700 p-6">
+              <h3 className="font-semibold text-white mb-3">AI Response</h3>
               <pre className="text-emerald-100 text-sm whitespace-pre-wrap">{result.raw}</pre>
             </div>
           )}
