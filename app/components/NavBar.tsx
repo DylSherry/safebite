@@ -35,7 +35,7 @@ export default function NavBar() {
           <Link href="/" className="text-xl font-semibold text-white">
             SafeBite
           </Link>
-          <Link href="/" className="text-sm text-emerald-100 hover:text-white">
+          <Link href="/browse" className="text-sm text-emerald-100 hover:text-white">
             Browse
           </Link>
           <Link href="/scan-allergens" className="text-sm text-emerald-100 hover:text-white">
