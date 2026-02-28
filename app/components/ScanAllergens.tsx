@@ -1,5 +1,13 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
+import { useUserProfile } from "@/app/hooks/useUserProfile";
+
+/** Case-insensitive check: does a detected allergen string overlap with a profile allergy string? */
+function allergensMatch(detected: string, profileAllergy: string): boolean {
+  const d = detected.toLowerCase();
+  const p = profileAllergy.toLowerCase();
+  return d === p || d.includes(p) || p.includes(d);
+}
 
 export default function ScanAllergens() {
   const [file, setFile] = useState<File | null>(null);
@@ -9,6 +17,24 @@ export default function ScanAllergens() {
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { profile } = useUserProfile();
+
+  /** All allergens the user has saved in their profile */
+  const userAllergens: string[] = useMemo(() => {
+    if (!profile) return [];
+    const top = profile.allergies ?? [];
+    const dietary = profile.dietary?.allergies ?? [];
+    return [...new Set([...top, ...dietary])];
+  }, [profile]);
+
+  /** Which detected allergens match the user's profile — triggers a personal warning */
+  const dangerousForUser: string[] = useMemo(() => {
+    if (!result?.allergensFound?.length || !userAllergens.length) return [];
+    return (result.allergensFound as string[]).filter((detected) =>
+      userAllergens.some((pa) => allergensMatch(detected, pa))
+    );
+  }, [result, userAllergens]);
 
   const applyFile = (f: File) => {
     setResult(null);
@@ -148,7 +174,47 @@ export default function ScanAllergens() {
       {/* Results */}
       {result && (
         <div className="flex flex-col gap-5">
-          {/* Allergens Found */}
+          {/* ── Personal safety verdict ── */}
+          {profile && userAllergens.length > 0 ? (
+            dangerousForUser.length > 0 ? (
+              <div className="rounded-2xl p-5 border border-orange-600 bg-orange-900/40">
+                <h3 className="font-semibold text-orange-200 text-lg mb-2">⚠ Unsafe for You</h3>
+                <p className="text-orange-300 text-sm mb-3">
+                  This product contains allergens that match your profile:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {dangerousForUser.map((al, i) => (
+                    <span key={i} className="inline-flex items-center rounded-full bg-orange-800 text-orange-100 px-3 py-1 text-sm font-semibold">
+                      {al}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl p-5 border border-green-600 bg-green-900/40">
+                <h3 className="font-semibold text-green-200 text-lg mb-1">✓ Safe for You</h3>
+                <p className="text-green-300 text-sm">
+                  None of the detected allergens match your profile allergens.
+                </p>
+              </div>
+            )
+          ) : profile && userAllergens.length === 0 ? (
+            <div className="rounded-2xl p-5 border border-emerald-700 bg-emerald-900/40">
+              <p className="text-emerald-300 text-sm">
+                <span className="font-semibold text-emerald-200">No allergens saved in your profile.</span>{" "}
+                Add your allergens in{" "}
+                <a href="/profile" className="underline hover:text-emerald-100">Profile Settings</a>{" "}
+                to get a personal safety check.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl p-5 border border-emerald-700 bg-emerald-900/40">
+              <p className="text-emerald-300 text-sm">
+                <a href="/login" className="underline hover:text-emerald-100">Sign in</a>{" "}
+                and save your allergens in your profile to get a personal safety check.
+              </p>
+            </div>
+          )}
           <div className={`rounded-2xl p-6 border ${
             result.allergensFound && result.allergensFound.length > 0
               ? "bg-red-900/40 border-red-700"
