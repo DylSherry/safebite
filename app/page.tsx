@@ -83,13 +83,6 @@ export default function Home() {
   };
 
   // calculate cart safety metrics
-  const cartSafetyScore = (() => {
-    // average safety score across distinct products (ignore quantity)
-    if (cart.length === 0) return 0;
-    const sum = cart.reduce((acc, i) => acc + (i.safety_score || 0), 0);
-    return sum / cart.length;
-  })();
-
   const activeCartAllergens = Array.from(
     new Set(
       cart
@@ -98,6 +91,9 @@ export default function Home() {
         .filter((a) => a && a !== "none")
     )
   );
+
+  // Score based on unique allergens across the whole cart: -10 per distinct allergen
+  const cartSafetyScore = cart.length === 0 ? 0 : Math.max(0, 100 - activeCartAllergens.length * 10);
 
   const filteredProducts = products.filter((product) => {
     // normalize allergens: lowercase and drop 'none' entries from database
