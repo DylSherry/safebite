@@ -12,6 +12,7 @@ export interface UserProfile {
     theme?: "light" | "dark";
   };
   allergies?: string[];
+  wishlist?: string[];
   dietary?: {
     allergies?: string[];
     restrictions?: string[];

@@ -36,9 +36,18 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  const { profile } = useUserProfile();
+  const { profile, updateProfile } = useUserProfile();
   const { addToCart } = useCart();
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+
+  const isWishlisted = (id: string) => (profile?.wishlist ?? []).includes(id);
+
+  const toggleWishlist = useCallback(async (productId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!profile) return;
+    const current = profile.wishlist ?? [];
+    await updateProfile({ wishlist: current.includes(productId) ? current.filter((x) => x !== productId) : [...current, productId] });
+  }, [profile, updateProfile]);
   const [safeForMe, setSafeForMe] = useState(false);
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
@@ -211,21 +220,38 @@ export default function Home() {
             <span className="text-emerald-200 font-bold text-sm">R{p.price.toFixed(2)}</span>
           )}
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); handleQuickAdd(p); }}
-          disabled={isOutOfStock(p)}
-          className={`mt-2 w-full rounded-full py-1.5 text-xs font-semibold transition-colors ${
-            isOutOfStock(p)
-              ? "bg-emerald-900 text-emerald-600 cursor-not-allowed"
-              : addedItems.has(p.id)
-              ? "bg-green-500 text-white"
-              : showDiscount
-              ? "bg-amber-500 hover:bg-amber-400 text-white"
-              : "bg-emerald-600 hover:bg-emerald-500 text-white"
-          }`}
-        >
-          {isOutOfStock(p) ? "Out of Stock" : addedItems.has(p.id) ? "✓ Added" : "Add to Cart"}
-        </button>
+        <div className="mt-2 flex gap-1.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleQuickAdd(p); }}
+            disabled={isOutOfStock(p)}
+            className={`flex-1 rounded-full py-1.5 text-xs font-semibold transition-colors ${
+              isOutOfStock(p)
+                ? "bg-emerald-900 text-emerald-600 cursor-not-allowed"
+                : addedItems.has(p.id)
+                ? "bg-green-500 text-white"
+                : showDiscount
+                ? "bg-amber-500 hover:bg-amber-400 text-white"
+                : "bg-emerald-600 hover:bg-emerald-500 text-white"
+            }`}
+          >
+            {isOutOfStock(p) ? "Out of Stock" : addedItems.has(p.id) ? "✓ Added" : "Add to Cart"}
+          </button>
+          {profile && (
+            <button
+              onClick={(e) => toggleWishlist(p.id, e)}
+              title={isWishlisted(p.id) ? "Remove from wishlist" : "Add to wishlist"}
+              className={`rounded-full w-8 flex items-center justify-center border transition-colors ${
+                isWishlisted(p.id)
+                  ? "bg-rose-600 border-rose-500 text-white"
+                  : "bg-emerald-800 border-emerald-700 text-emerald-400 hover:border-rose-500 hover:text-rose-400"
+              }`}
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill={isWishlisted(p.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );

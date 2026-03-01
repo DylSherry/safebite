@@ -131,9 +131,18 @@ export default function BrowsePage() {
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [safeForMe, setSafeForMe] = useState(false);
   const [search, setSearch] = useState("");
-  const { profile } = useUserProfile();
+  const { profile, updateProfile } = useUserProfile();
   const { addToCart, cart } = useCart();
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+
+  const isWishlisted = (id: string) => (profile?.wishlist ?? []).includes(id);
+
+  const toggleWishlist = async (productId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!profile) return;
+    const current = profile.wishlist ?? [];
+    await updateProfile({ wishlist: current.includes(productId) ? current.filter((x) => x !== productId) : [...current, productId] });
+  };
   const searchParams = useSearchParams();
   const router = useRouter();
   const [activePrompt, setActivePrompt] = useState("");
@@ -412,19 +421,36 @@ export default function BrowsePage() {
                   <span className="text-xs text-emerald-600 group-hover:text-emerald-400 transition-colors">
                     View details →
                   </span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleQuickAdd(p); }}
-                    disabled={isOutOfStock(p)}
-                    className={`rounded-full px-4 py-2 text-white font-medium transition-colors text-sm ${
-                      isOutOfStock(p)
-                        ? "bg-emerald-900 text-emerald-600 cursor-not-allowed"
-                        : addedItems.has(p.id)
-                        ? "bg-green-500 hover:bg-green-600"
-                        : "bg-emerald-600 hover:bg-emerald-500"
-                    }`}
-                  >
-                    {isOutOfStock(p) ? "Out of Stock" : addedItems.has(p.id) ? "✓ Added" : "Quick Add"}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {profile && (
+                      <button
+                        onClick={(e) => toggleWishlist(p.id, e)}
+                        title={isWishlisted(p.id) ? "Remove from wishlist" : "Add to wishlist"}
+                        className={`rounded-full p-2 border transition-colors ${
+                          isWishlisted(p.id)
+                            ? "bg-rose-600 border-rose-500 text-white"
+                            : "bg-emerald-800 border-emerald-700 text-emerald-400 hover:border-rose-500 hover:text-rose-400"
+                        }`}
+                      >
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill={isWishlisted(p.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleQuickAdd(p); }}
+                      disabled={isOutOfStock(p)}
+                      className={`rounded-full px-4 py-2 text-white font-medium transition-colors text-sm ${
+                        isOutOfStock(p)
+                          ? "bg-emerald-900 text-emerald-600 cursor-not-allowed"
+                          : addedItems.has(p.id)
+                          ? "bg-green-500 hover:bg-green-600"
+                          : "bg-emerald-600 hover:bg-emerald-500"
+                      }`}
+                    >
+                      {isOutOfStock(p) ? "Out of Stock" : addedItems.has(p.id) ? "✓ Added" : "Quick Add"}
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
