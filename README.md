@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SafeBite
 
-## Getting Started
+An allergen-aware online grocery shopping application built with Next.js and Firebase.
 
-First, run the development server:
+## Deployed Site
+
+**https://safebite-two.vercel.app**
+
+## Running Locally
+
+### Prerequisites
+- Node.js 18+
+- npm
+
+### Steps
 
 ```bash
+# Install dependencies
+npm install
+
+# Start the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database Access
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The Firebase project database is used as the backend. The following accounts have been granted Editor access to the Firebase project:
 
-## Learn More
+- ammarcanani@gmail.com
+- elsje.scott@uct.ac.za
 
-To learn more about Next.js, take a look at the following resources:
+## Administrator Access
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Use the following credentials to log in with administrator priviledges at https://safebite-two.vercel.app/login:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Username: dgsherry1@gmail.com
+Password: testing123
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Once logged in, navigate to https://safebite-two.vercel.app/admin to access the admin dashboard.
