@@ -261,18 +261,6 @@ export default function AdminDashboard() {
               <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-5">Promotion &amp; Merchandising</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Sales Count <span className="normal-case font-normal text-emerald-500">(used for Top Sellers ranking)</span></label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={formData.salesCount ?? ""}
-                    min={0}
-                    step={1}
-                    onChange={(e) => setFormData({ ...formData, salesCount: e.target.value === "" ? undefined : parseInt(e.target.value) })}
-                    className="rounded-xl border border-emerald-700 bg-emerald-800 px-4 py-2.5 text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Promotion Price (R) <span className="normal-case font-normal text-emerald-500">(leave blank if not on sale)</span></label>
                   <input
                     type="number"
