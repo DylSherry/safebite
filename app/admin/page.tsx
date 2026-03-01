@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuthRequired } from "@/app/hooks/useAuthRequired";
 import { useUserProfile } from "@/app/hooks/useUserProfile";
 import { Product } from "@/lib/types";
+import DatePicker from "@/app/components/DatePicker";
 
 type OrderItem = { id: string; name: string; quantity: number; price: number; image_url?: string };
 type Order = {
@@ -36,6 +37,10 @@ export default function AdminDashboard() {
   const [savingStock, setSavingStock] = useState<string | null>(null);
   const [stockSearch, setStockSearch] = useState("");
   const [reportTab, setReportTab] = useState<"financial" | "product" | "customer">("financial");
+  const [tagInput, setTagInput] = useState("");
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderDateFrom, setOrderDateFrom] = useState("");
+  const [orderDateTo, setOrderDateTo] = useState("");
 
   useEffect(() => {
     if (profile?.role !== "admin") return;
@@ -578,87 +583,154 @@ export default function AdminDashboard() {
         )}
 
         {/* ── Orders Tab ── */}
-        {activeTab === "orders" && (
-          <>
-            {ordersLoading ? (
-              <p className="text-emerald-400">Loading orders…</p>
-            ) : orders.length === 0 ? (
-              <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-10 text-center">
-                <p className="text-emerald-400">No orders yet.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4">
-                {orders.map((order) => (
-                  <div key={order.id} className="rounded-2xl bg-emerald-900 border border-emerald-800 overflow-hidden">
-                    {/* Order header row */}
-                    <button
-                      onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
-                      className="w-full flex flex-wrap items-center gap-4 px-5 py-4 hover:bg-emerald-800/40 transition-colors text-left"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-semibold text-sm truncate">{order.delivery?.fullName || "Unknown"}</p>
-                        <p className="text-emerald-400 text-xs truncate">{order.userEmail}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-white font-semibold text-sm">R{Number(order.total).toFixed(2)}</p>
-                        <p className="text-emerald-400 text-xs">
-                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : "—"}
-                        </p>
-                      </div>
-                      <svg
-                        className={`h-4 w-4 text-emerald-400 shrink-0 transition-transform ${expandedOrder === order.id ? "rotate-180" : ""}`}
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
+        {activeTab === "orders" && (() => {
+          // Filter logic
+          const needle = orderSearch.trim().toLowerCase();
+          const fromTs = orderDateFrom ? new Date(orderDateFrom).getTime() : null;
+          const toTs   = orderDateTo   ? new Date(orderDateTo + "T23:59:59").getTime() : null;
+          const filteredOrders = orders.filter((o) => {
+            if (needle) {
+              const name  = (o.delivery?.fullName ?? "").toLowerCase();
+              const email = (o.userEmail ?? "").toLowerCase();
+              if (!name.includes(needle) && !email.includes(needle)) return false;
+            }
+            if (fromTs !== null || toTs !== null) {
+              const ts = o.createdAt ? new Date(o.createdAt).getTime() : null;
+              if (!ts) return false;
+              if (fromTs !== null && ts < fromTs) return false;
+              if (toTs   !== null && ts > toTs)   return false;
+            }
+            return true;
+          });
+          const anyFilter = needle || orderDateFrom || orderDateTo;
 
-                    {/* Expanded details */}
-                    {expandedOrder === order.id && (
-                      <div className="border-t border-emerald-800 px-5 py-5 flex flex-col gap-5">
-                        {/* Items list */}
-                        <div>
-                          <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-3">Items</p>
-                          <div className="flex flex-col gap-2">
-                            {(order.items || []).map((item: OrderItem, i: number) => (
-                              <div key={i} className="flex items-center gap-3">
-                                {item.image_url && (
-                                  <img src={item.image_url} alt={item.name} className="h-10 w-10 rounded-lg object-cover shrink-0" />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-white text-sm font-medium truncate">{item.name}</p>
-                                  <p className="text-emerald-400 text-xs">Qty: {item.quantity} × R{Number(item.price).toFixed(2)}</p>
-                                </div>
-                                <p className="text-emerald-200 text-sm font-semibold shrink-0">R{(item.quantity * item.price).toFixed(2)}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Delivery & payment */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1.5">Delivery</p>
-                            <p className="text-white text-sm">{order.delivery?.fullName}</p>
-                            <p className="text-emerald-300 text-sm">{order.delivery?.address}</p>
-                            <p className="text-emerald-300 text-sm">{order.delivery?.city}, {order.delivery?.postalCode}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1.5">Payment</p>
-                            <p className="text-white text-sm capitalize">{order.paymentMethod || "—"}</p>
-                            <p className="text-xs font-mono text-emerald-400 mt-1">{order.id}</p>
-                          </div>
-                        </div>
-
-
-                      </div>
-                    )}
+          return (
+            <>
+              {/* Filter toolbar */}
+              <div className="mb-5 rounded-2xl bg-emerald-900 border border-emerald-800 p-4 flex flex-wrap gap-3 items-end">
+                <div className="flex flex-col gap-1 flex-1 min-w-48">
+                  <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Search customer</label>
+                  <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={orderSearch}
+                      onChange={(e) => setOrderSearch(e.target.value)}
+                      placeholder="Name or email…"
+                      className="w-full rounded-xl border border-emerald-700 bg-emerald-800 pl-8 pr-4 py-2 text-sm text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
                   </div>
-                ))}
+                </div>
+                <DatePicker
+                  label="From"
+                  value={orderDateFrom}
+                  onChange={setOrderDateFrom}
+                  placeholder="Start date"
+                />
+                <DatePicker
+                  label="To"
+                  value={orderDateTo}
+                  onChange={setOrderDateTo}
+                  placeholder="End date"
+                />
+                {anyFilter && (
+                  <button
+                    onClick={() => { setOrderSearch(""); setOrderDateFrom(""); setOrderDateTo(""); }}
+                    className="self-end rounded-xl border border-emerald-700 hover:border-emerald-500 px-4 py-2 text-sm font-medium text-emerald-400 hover:text-white transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+                <p className="self-end ml-auto text-xs text-emerald-500 whitespace-nowrap">
+                  {filteredOrders.length} of {orders.length} order{orders.length !== 1 ? "s" : ""}
+                </p>
               </div>
-            )}
-          </>
-        )}
+
+              {ordersLoading ? (
+                <p className="text-emerald-400">Loading orders…</p>
+              ) : orders.length === 0 ? (
+                <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-10 text-center">
+                  <p className="text-emerald-400">No orders yet.</p>
+                </div>
+              ) : filteredOrders.length === 0 ? (
+                <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-10 text-center">
+                  <p className="text-emerald-300 font-medium mb-1">No orders match your filters</p>
+                  <p className="text-emerald-500 text-sm">Try adjusting the search or date range.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {filteredOrders.map((order) => (
+                    <div key={order.id} className="rounded-2xl bg-emerald-900 border border-emerald-800 overflow-hidden">
+                      {/* Order header row */}
+                      <button
+                        onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+                        className="w-full flex flex-wrap items-center gap-4 px-5 py-4 hover:bg-emerald-800/40 transition-colors text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-semibold text-sm truncate">{order.delivery?.fullName || "Unknown"}</p>
+                          <p className="text-emerald-400 text-xs truncate">{order.userEmail}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-white font-semibold text-sm">R{Number(order.total).toFixed(2)}</p>
+                          <p className="text-emerald-400 text-xs">
+                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                          </p>
+                        </div>
+                        <svg
+                          className={`h-4 w-4 text-emerald-400 shrink-0 transition-transform ${expandedOrder === order.id ? "rotate-180" : ""}`}
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {/* Expanded details */}
+                      {expandedOrder === order.id && (
+                        <div className="border-t border-emerald-800 px-5 py-5 flex flex-col gap-5">
+                          {/* Items list */}
+                          <div>
+                            <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-3">Items</p>
+                            <div className="flex flex-col gap-2">
+                              {(order.items || []).map((item: OrderItem, i: number) => (
+                                <div key={i} className="flex items-center gap-3">
+                                  {item.image_url && (
+                                    <img src={item.image_url} alt={item.name} className="h-10 w-10 rounded-lg object-cover shrink-0" />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                                    <p className="text-emerald-400 text-xs">Qty: {item.quantity} × R{Number(item.price).toFixed(2)}</p>
+                                  </div>
+                                  <p className="text-emerald-200 text-sm font-semibold shrink-0">R{(item.quantity * item.price).toFixed(2)}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Delivery & payment */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1.5">Delivery</p>
+                              <p className="text-white text-sm">{order.delivery?.fullName}</p>
+                              <p className="text-emerald-300 text-sm">{order.delivery?.address}</p>
+                              <p className="text-emerald-300 text-sm">{order.delivery?.city}, {order.delivery?.postalCode}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1.5">Payment</p>
+                              <p className="text-white text-sm capitalize">{order.paymentMethod || "—"}</p>
+                              <p className="text-xs font-mono text-emerald-400 mt-1">{order.id}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          );
+        })()}
         {/* ── Reports Tab ── */}
         {activeTab === "reports" && (() => {
           // ── Shared derived data ──────────────────────────────────────────────
