@@ -66,7 +66,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const authHeader = req.headers.get("authorization") || "";
   const idToken = authHeader.replace("Bearer ", "");
 
@@ -75,7 +75,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   }
 
   try {
-    const productId = params.id;
+    const { id: productId } = await params;
     await db.collection("products").doc(productId).delete();
 
     return NextResponse.json({
