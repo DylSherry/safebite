@@ -400,7 +400,7 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           onClick={() => handleDelete(product.id)}
-                          className="rounded-lg bg-red-900/50 hover:bg-red-800 border border-red-800 hover:border-red-600 px-3 py-1.5 text-xs font-semibold text-red-300 hover:text-white transition-colors"
+                          className="rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors"
                         >
                           Delete
                         </button>
