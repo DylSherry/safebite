@@ -125,16 +125,25 @@ export default function AdminDashboard() {
       <div className="max-w-6xl mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-bold text-white">Product Management</h1>
-          <button
-            onClick={() => {
-              setShowForm(!showForm);
-              setEditingId(null);
-              setFormData({});
-            }}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors"
-          >
-            {showForm ? "Cancel" : "+ Add Product"}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchProducts}
+              disabled={loading}
+              className="rounded-xl border border-emerald-700 hover:border-emerald-500 px-4 py-2.5 text-sm font-medium text-emerald-300 hover:text-white transition-colors disabled:opacity-50"
+            >
+              {loading ? "Refreshing…" : "↻ Refresh"}
+            </button>
+            <button
+              onClick={() => {
+                setShowForm(!showForm);
+                setEditingId(null);
+                setFormData({});
+              }}
+              className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors"
+            >
+              {showForm ? "Cancel" : "+ Add Product"}
+            </button>
+          </div>
         </div>
 
         {status && (

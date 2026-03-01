@@ -29,6 +29,8 @@ export default function SignupPage() {
         body: JSON.stringify({ email, uid }),
       });
       if (!res.ok) {
+        // Roll back the Auth account so the email isn't permanently locked
+        await userCred.user.delete();
         const json = await res.json().catch(() => ({}));
         throw new Error(json?.error || "Server error creating profile");
       }
