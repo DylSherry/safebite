@@ -288,30 +288,30 @@ export default function Home() {
             <h1 className="text-4xl font-bold text-white mb-4">
               {profile?.displayName ? `Welcome back, ${profile.displayName.split(" ")[0]}!` : "Welcome to SafeBite"}
             </h1>
-            <p className="text-emerald-200 text-lg leading-relaxed mb-8">
+            <p className="text-emerald-200 text-lg leading-relaxed mb-10">
               Shop safely with allergen-aware product discovery. Find deals, top picks, and food that works for you.
             </p>
-            <form onSubmit={handlePromptSearch} className="mb-8">
-              <label className="block text-sm font-semibold text-emerald-300 mb-2.5">
+            <form onSubmit={handlePromptSearch} className="mb-8 max-w-xl">
+              <label className="block text-xs font-semibold text-emerald-400 mb-2 tracking-wide uppercase">
                 Search with natural language
               </label>
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <input
                   type="text"
                   value={searchPrompt}
                   onChange={(e) => setSearchPrompt(e.target.value)}
-                  placeholder='e.g. "dairy-free snacks under R50" or "nut-free breakfast"'
-                  className="flex-1 rounded-xl bg-emerald-900 border border-emerald-600 px-5 py-3.5 text-base text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400"
+                  placeholder='e.g. "dairy-free snacks under R50"'
+                  className="flex-1 rounded-lg bg-emerald-900 border border-emerald-700 px-4 py-2.5 text-sm text-white placeholder-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 />
                 <button
                   type="submit"
                   disabled={!searchPrompt.trim()}
-                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed px-6 py-3.5 text-sm font-semibold text-white transition-colors shrink-0"
+                  className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed px-5 py-2.5 text-sm font-semibold text-white transition-colors shrink-0"
                 >
                   Search
                 </button>
               </div>
-              <p className="mt-2.5 text-sm text-emerald-400">Describe what you need — allergen requirements, price range, category, and more.</p>
+              <p className="mt-2 text-xs text-emerald-500">Describe what you need — allergens, price range, category, and more.</p>
             </form>
             <div className="flex flex-wrap gap-3">
               <Link
