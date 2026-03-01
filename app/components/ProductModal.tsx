@@ -140,14 +140,14 @@ export default function ProductModal({
                   .map((a) => (
                     <span
                       key={a}
-                      className="inline-flex items-center gap-1.5 text-xs rounded-full bg-red-900/40 border border-red-700/50 text-red-300 px-2.5 py-1"
+                      className="inline-flex items-center gap-1.5 text-xs rounded-full bg-emerald-800 border border-emerald-600 text-white px-2.5 py-1 font-medium"
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
                       {a}
                     </span>
                   ))
               ) : (
-                <span className="text-xs rounded-full bg-green-900/40 border border-green-700/50 text-green-300 px-2.5 py-1">
+                <span className="inline-flex items-center gap-2 text-xs rounded-full bg-green-900 text-green-100 px-2.5 py-1">
                   No allergens
                 </span>
               )}
