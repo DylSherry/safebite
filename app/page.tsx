@@ -130,7 +130,7 @@ export default function Home() {
   const topSelling = [...products]
     .filter((p) => (p.salesCount ?? 0) > 0 && passesFilter(p))
     .sort((a, b) => (b.salesCount ?? 0) - (a.salesCount ?? 0))
-    .slice(0, 8);
+    .slice(0, 5);
 
   const SkeletonCards = ({ count = 4 }: { count?: number }) => (
     <div className="flex gap-4 overflow-x-auto pb-2">
