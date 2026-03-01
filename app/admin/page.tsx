@@ -22,7 +22,7 @@ type Order = {
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuthRequired();
   const { profile, loading: profileLoading } = useUserProfile();
-  const [activeTab, setActiveTab] = useState<"products" | "orders" | "reports" | "stock">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "orders" | "reports" | "stock" | "categories">("products");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -41,10 +41,16 @@ export default function AdminDashboard() {
   const [orderSearch, setOrderSearch] = useState("");
   const [orderDateFrom, setOrderDateFrom] = useState("");
   const [orderDateTo, setOrderDateTo] = useState("");
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [catInput, setCatInput] = useState("");
+  const [savingCat, setSavingCat] = useState(false);
+  const [renamingCatId, setRenamingCatId] = useState<string | null>(null);
+  const [renameCatValue, setRenameCatValue] = useState("");
 
   useEffect(() => {
     if (profile?.role !== "admin") return;
     fetchProducts();
+    fetchCategories();
   }, [profile]);
 
   useEffect(() => {
@@ -65,6 +71,85 @@ export default function AdminDashboard() {
       setStockDraft(Object.fromEntries(products.map((p) => [p.id, String(p.stock ?? 0)])));
     }
   }, [activeTab, products]);
+
+  const fetchCategories = async () => {
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch("/api/admin/categories", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch categories");
+      const data = await res.json();
+      setCategories(data.categories || []);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to load categories");
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!catInput.trim() || savingCat) return;
+    setSavingCat(true);
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: catInput.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to add category");
+      const data = await res.json();
+      setCategories((prev) =>
+        [...prev, { id: data.id, name: data.name }].sort((a, b) => a.name.localeCompare(b.name))
+      );
+      setCatInput("");
+      setStatus("Category added — success");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to add category");
+    } finally {
+      setSavingCat(false);
+    }
+  };
+
+  const handleRenameCategory = async (id: string) => {
+    if (!renameCatValue.trim() || savingCat) return;
+    setSavingCat(true);
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch(`/api/admin/categories/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: renameCatValue.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to rename category");
+      const data = await res.json();
+      setCategories((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, name: data.name } : c)).sort((a, b) => a.name.localeCompare(b.name))
+      );
+      setRenamingCatId(null);
+      setRenameCatValue("");
+      setStatus("Category renamed — success");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to rename category");
+    } finally {
+      setSavingCat(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    if (!window.confirm(`Delete category "${name}"? Products using this category will not be affected.`)) return;
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch(`/api/admin/categories/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to delete category");
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      setStatus("Category deleted — success");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to delete category");
+    }
+  };
 
   const handleSaveStock = async (productId: string) => {
     const newStock = parseInt(stockDraft[productId] ?? "0", 10);
@@ -252,6 +337,14 @@ export default function AdminDashboard() {
                 {loading ? "Refreshing…" : "↻ Refresh"}
               </button>
             )}
+            {activeTab === "categories" && (
+              <button
+                onClick={fetchCategories}
+                className="rounded-xl border border-emerald-700 hover:border-emerald-500 px-4 py-2.5 text-sm font-medium text-emerald-300 hover:text-white transition-colors"
+              >
+                ↻ Refresh
+              </button>
+            )}
           </div>
         </div>
 
@@ -299,6 +392,16 @@ export default function AdminDashboard() {
           >
             Stock
           </button>
+          <button
+            onClick={() => setActiveTab("categories")}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === "categories"
+                ? "bg-emerald-600 text-white"
+                : "text-emerald-300 hover:text-white"
+            }`}
+          >
+            Categories
+          </button>
         </div>
 
         {status && (
@@ -343,7 +446,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Price (R)</label>
+                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Price (R) <span className="normal-case font-normal text-emerald-500">selling price</span></label>
                 <input
                   type="number"
                   placeholder="0.00"
@@ -351,6 +454,18 @@ export default function AdminDashboard() {
                   min={0}
                   step={0.01}
                   onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                  className="rounded-xl border border-emerald-700 bg-emerald-800 px-4 py-2.5 text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Cost (R) <span className="normal-case font-normal text-emerald-500">purchase / cost price</span></label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={formData.cost || ""}
+                  min={0}
+                  step={0.01}
+                  onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) })}
                   className="rounded-xl border border-emerald-700 bg-emerald-800 px-4 py-2.5 text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -398,6 +513,19 @@ export default function AdminDashboard() {
                   className="rounded-xl border border-emerald-700 bg-emerald-800 px-4 py-2.5 text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                   rows={2}
                 />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Category</label>
+                <select
+                  value={formData.category || ""}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value || undefined })}
+                  className="rounded-xl border border-emerald-700 bg-emerald-800 px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">— No category —</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
                 <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Ingredients</label>
@@ -737,8 +865,12 @@ export default function AdminDashboard() {
           const totalRevenue    = orders.reduce((s, o) => s + Number(o.total), 0);
           const avgOrderValue   = orders.length ? totalRevenue / orders.length : 0;
           const totalSold       = products.reduce((s, p) => s + (p.salesCount ?? 0), 0);
-          // Simulated cost of sales: assume 55% margin → COGS ≈ 45% of revenue
-          const cogs            = totalRevenue * 0.45;
+          // Real COGS: sum of (cost × unitsSold) for each product; fall back to 45% estimate for products without a cost set
+          const cogsFromCost    = products.reduce((s, p) => s + (p.cost ?? 0) * (p.salesCount ?? 0), 0);
+          const revenueWithCost = products.reduce((s, p) => p.cost != null ? s + (p.price ?? 0) * (p.salesCount ?? 0) : s, 0);
+          const revenueNoCost   = totalRevenue - revenueWithCost;
+          const cogs            = cogsFromCost + revenueNoCost * 0.45;
+          const cogsNote        = products.some((p) => p.cost != null) ? "based on product cost prices" : "est. 45% of revenue (no costs set)";
           const grossProfit     = totalRevenue - cogs;
           const grossMarginPct  = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
 
@@ -819,10 +951,10 @@ export default function AdminDashboard() {
               {reportTab === "financial" && (
                 <div className="flex flex-col gap-6">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <KpiCard label="Total Revenue"   value={`R${totalRevenue.toFixed(2)}`}   sub={`${orders.length} orders`}            color="text-green-400" />
-                    <KpiCard label="Cost of Sales"   value={`R${cogs.toFixed(2)}`}            sub="est. 45% of revenue"                   color="text-amber-300" />
-                    <KpiCard label="Gross Profit"    value={`R${grossProfit.toFixed(2)}`}     sub={`${grossMarginPct.toFixed(1)}% margin`} color="text-emerald-300" />
-                    <KpiCard label="Avg Order Value" value={`R${avgOrderValue.toFixed(2)}`}   sub={`across ${orders.length} orders`}     color="text-blue-300" />
+                    <KpiCard label="Total Revenue"   value={`R${totalRevenue.toFixed(2)}`}   sub={`${orders.length} orders`}             color="text-green-400" />
+                    <KpiCard label="Cost of Sales"   value={`R${cogs.toFixed(2)}`}            sub={cogsNote}                               color="text-amber-300" />
+                    <KpiCard label="Gross Profit"    value={`R${grossProfit.toFixed(2)}`}     sub={`${grossMarginPct.toFixed(1)}% margin`}  color="text-emerald-300" />
+                    <KpiCard label="Avg Order Value" value={`R${avgOrderValue.toFixed(2)}`}   sub={`across ${orders.length} orders`}      color="text-blue-300" />
                   </div>
 
                   {/* Monthly revenue bar chart */}
@@ -1143,6 +1275,115 @@ export default function AdminDashboard() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Categories Tab ── */}
+        {activeTab === "categories" && (
+          <div className="space-y-6">
+            {/* Add new category */}
+            <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-6">
+              <h2 className="text-lg font-bold text-white mb-1">Add Category</h2>
+              <p className="text-xs text-emerald-500 mb-4">Categories appear as a dropdown when creating or editing products.</p>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={catInput}
+                  onChange={(e) => setCatInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); }}
+                  placeholder="e.g. Dairy & Alternatives"
+                  className="flex-1 rounded-xl border border-emerald-700 bg-emerald-800 px-4 py-2.5 text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <button
+                  onClick={handleAddCategory}
+                  disabled={!catInput.trim() || savingCat}
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingCat ? "Adding…" : "+ Add"}
+                </button>
+              </div>
+            </div>
+
+            {/* Category list */}
+            <div className="rounded-2xl bg-emerald-900 border border-emerald-800 overflow-hidden">
+              {categories.length === 0 ? (
+                <div className="p-10 text-center">
+                  <p className="text-emerald-400 font-medium mb-2">No categories yet.</p>
+                  <p className="text-emerald-500 text-sm mb-3">Click a suggestion to pre-fill the field above, then click + Add.</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {[
+                      "Dairy & Alternatives", "Bread & Bakery", "Snacks & Confectionery",
+                      "Beverages", "Cereals & Grains", "Condiments & Sauces",
+                      "Meat & Poultry", "Seafood", "Produce",
+                      "Frozen Foods", "Pantry Staples", "Health & Supplements",
+                    ].map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setCatInput(s)}
+                        className="rounded-full border border-emerald-700 bg-emerald-800 hover:border-emerald-500 px-3 py-1 text-xs text-emerald-300 hover:text-white transition-colors"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-emerald-800/80">
+                    <tr>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Category Name</th>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Products</th>
+                      <th className="px-5 py-3.5 text-right text-xs font-semibold text-emerald-300 uppercase tracking-wide">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-800">
+                    {categories.map((cat) => {
+                      const count = products.filter((p) => p.category === cat.name).length;
+                      const isRenaming = renamingCatId === cat.id;
+                      return (
+                        <tr key={cat.id} className="hover:bg-emerald-800/40 transition-colors">
+                          <td className="px-5 py-4">
+                            {isRenaming ? (
+                              <input
+                                autoFocus
+                                type="text"
+                                value={renameCatValue}
+                                onChange={(e) => setRenameCatValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleRenameCategory(cat.id);
+                                  if (e.key === "Escape") { setRenamingCatId(null); setRenameCatValue(""); }
+                                }}
+                                className="rounded-lg border border-emerald-600 bg-emerald-800 px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-xs"
+                              />
+                            ) : (
+                              <span className="text-white font-medium">{cat.name}</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-emerald-400 text-xs">{count} product{count !== 1 ? "s" : ""}</span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-2 justify-end">
+                              {isRenaming ? (
+                                <>
+                                  <button onClick={() => handleRenameCategory(cat.id)} disabled={savingCat} className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors disabled:opacity-50">Save</button>
+                                  <button onClick={() => { setRenamingCatId(null); setRenameCatValue(""); }} className="rounded-lg border border-emerald-700 hover:border-emerald-500 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:text-white transition-colors">Cancel</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button onClick={() => { setRenamingCatId(cat.id); setRenameCatValue(cat.name); }} className="rounded-lg bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors">Rename</button>
+                                  <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className="rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors">Delete</button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         )}
       </div>

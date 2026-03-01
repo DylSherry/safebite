@@ -38,6 +38,8 @@ export interface Product {
   name: string;
   brand?: string;
   price: number;
+  /** Cost price (what the store pays for the product) – used for COGS in Financial report */
+  cost?: number;
   stock?: number;
   image_url?: string;
   allergens?: string[];
