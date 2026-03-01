@@ -15,7 +15,7 @@ function bufferToBase64(buffer: Buffer | ArrayBuffer) {
   if (buffer instanceof Buffer) {
     return buffer.toString("base64");
   } else {
-    return Buffer.from(buffer).toString("base64");
+    return Buffer.from(new Uint8Array(buffer)).toString("base64");
   }
 }
 
