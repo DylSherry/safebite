@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { Suspense, useState, useEffect, useCallback } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useCart } from "../context/CartContext";
@@ -122,7 +122,7 @@ function getMatchReasons(product: Product, parsed: ParsedPrompt): string[] {
   return reasons.slice(0, 3);
 }
 
-export default function BrowsePage() {
+function BrowsePageContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -469,5 +469,13 @@ export default function BrowsePage() {
         />
       )}
     </>
+  );
+}
+
+export default function BrowsePage() {
+  return (
+    <Suspense fallback={<main className="flex-1 overflow-y-auto bg-emerald-950 p-10"><p className="text-emerald-400">Loading…</p></main>}>
+      <BrowsePageContent />
+    </Suspense>
   );
 }
