@@ -24,7 +24,7 @@ const ORDER_STATUSES = ["confirmed", "processing", "shipped", "delivered", "canc
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuthRequired();
   const { profile, loading: profileLoading } = useUserProfile();
-  const [activeTab, setActiveTab] = useState<"products" | "orders">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "orders" | "reports" | "stock">("products");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,6 +36,9 @@ export default function AdminDashboard() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [stockDraft, setStockDraft] = useState<Record<string, string>>({});
+  const [savingStock, setSavingStock] = useState<string | null>(null);
+  const [stockSearch, setStockSearch] = useState("");
 
   useEffect(() => {
     if (profile?.role !== "admin") return;
@@ -46,6 +49,42 @@ export default function AdminDashboard() {
     if (profile?.role !== "admin" || activeTab !== "orders") return;
     fetchOrders();
   }, [profile, activeTab]);
+
+  useEffect(() => {
+    if (profile?.role !== "admin" || activeTab !== "reports") return;
+    // Reports derive from orders + products; fetch both if not yet loaded
+    if (orders.length === 0) fetchOrders();
+    if (products.length === 0) fetchProducts();
+  }, [profile, activeTab]);
+
+  // Seed the stock draft whenever products load or stock tab is opened
+  useEffect(() => {
+    if (activeTab === "stock" && products.length > 0) {
+      setStockDraft(Object.fromEntries(products.map((p) => [p.id, String(p.stock ?? 0)])));
+    }
+  }, [activeTab, products]);
+
+  const handleSaveStock = async (productId: string) => {
+    const newStock = parseInt(stockDraft[productId] ?? "0", 10);
+    if (isNaN(newStock) || newStock < 0) return;
+    setSavingStock(productId);
+    try {
+      const token = await user?.getIdToken();
+      const product = products.find((p) => p.id === productId);
+      const res = await fetch(`/api/admin/products/${productId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...product, stock: newStock }),
+      });
+      if (!res.ok) throw new Error("Failed to update stock");
+      setProducts((prev) => prev.map((p) => p.id === productId ? { ...p, stock: newStock } : p));
+      setStatus(`Stock updated for "${product?.name}"`);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to update stock");
+    } finally {
+      setSavingStock(null);
+    }
+  };
 
   const fetchOrders = async () => {
     setOrdersLoading(true);
@@ -219,6 +258,24 @@ export default function AdminDashboard() {
                 {ordersLoading ? "Refreshing…" : "↻ Refresh"}
               </button>
             )}
+            {activeTab === "reports" && (
+              <button
+                onClick={() => { fetchOrders(); fetchProducts(); }}
+                disabled={ordersLoading || loading}
+                className="rounded-xl border border-emerald-700 hover:border-emerald-500 px-4 py-2.5 text-sm font-medium text-emerald-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                {ordersLoading || loading ? "Refreshing…" : "↻ Refresh"}
+              </button>
+            )}
+            {activeTab === "stock" && (
+              <button
+                onClick={() => { fetchProducts(); }}
+                disabled={loading}
+                className="rounded-xl border border-emerald-700 hover:border-emerald-500 px-4 py-2.5 text-sm font-medium text-emerald-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                {loading ? "Refreshing…" : "↻ Refresh"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -229,7 +286,7 @@ export default function AdminDashboard() {
             className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
               activeTab === "products"
                 ? "bg-emerald-600 text-white"
-                : "text-emerald-400 hover:text-white"
+                : "text-emerald-300 hover:text-white"
             }`}
           >
             Products
@@ -239,12 +296,32 @@ export default function AdminDashboard() {
             className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
               activeTab === "orders"
                 ? "bg-emerald-600 text-white"
-                : "text-emerald-400 hover:text-white"
+                : "text-emerald-300 hover:text-white"
             }`}
           >
             Orders {orders.length > 0 && activeTab !== "orders" && (
               <span className="ml-1.5 rounded-full bg-emerald-700 px-1.5 py-0.5 text-xs">{orders.length}</span>
             )}
+          </button>
+          <button
+            onClick={() => setActiveTab("reports")}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === "reports"
+                ? "bg-emerald-600 text-white"
+                : "text-emerald-300 hover:text-white"
+            }`}
+          >
+            Reports
+          </button>
+          <button
+            onClick={() => setActiveTab("stock")}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === "stock"
+                ? "bg-emerald-600 text-white"
+                : "text-emerald-300 hover:text-white"
+            }`}
+          >
+            Stock
           </button>
         </div>
 
@@ -324,7 +401,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Allergens <span className="normal-case font-normal text-emerald-500">(comma-separated)</span></label>
+                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Allergens <span className="normal-case font-normal text-emerald-400">(comma-separated)</span></label>
                 <textarea
                   placeholder="e.g. Milk, Soy, Gluten"
                   value={(formData.allergens || []).join(", ")}
@@ -337,7 +414,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Certifications <span className="normal-case font-normal text-emerald-500">(comma-separated)</span></label>
+                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Certifications <span className="normal-case font-normal text-emerald-400">(comma-separated)</span></label>
                 <textarea
                   placeholder="e.g. Halaal, Kosher, Organic"
                   value={(formData.certifications || []).join(", ")}
@@ -357,7 +434,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="md:col-span-2 flex items-center gap-2 text-sm text-emerald-300">
-                <span className="text-emerald-500">Auto safety score:</span>
+                <span className="text-emerald-400">Auto safety score:</span>
                 <span className={`font-bold ${
                   (formData.safety_score ?? computeSafetyScore(formData.allergens)) >= 80
                     ? "text-green-400"
@@ -375,7 +452,7 @@ export default function AdminDashboard() {
               <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-5">Promotion &amp; Merchandising</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Promotion Price (R) <span className="normal-case font-normal text-emerald-500">(leave blank if not on sale)</span></label>
+                  <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Promotion Price (R) <span className="normal-case font-normal text-emerald-400">(leave blank if not on sale)</span></label>
                   <input
                     type="number"
                     placeholder="0.00"
@@ -495,7 +572,7 @@ export default function AdminDashboard() {
                           <span className="rounded-full bg-emerald-800 border border-emerald-700 text-emerald-400 text-xs px-2.5 py-0.5">{product.salesCount} sold</span>
                         )}
                         {!product.isOnPromotion && !product.isFeatured && !(product.salesCount ?? 0) && (
-                          <span className="text-emerald-600 text-xs">—</span>
+                          <span className="text-emerald-400 text-xs">—</span>
                         )}
                       </div>
                     </td>
@@ -553,7 +630,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-white font-semibold text-sm">R{Number(order.total).toFixed(2)}</p>
-                        <p className="text-emerald-500 text-xs">
+                        <p className="text-emerald-400 text-xs">
                           {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                         </p>
                       </div>
@@ -603,7 +680,7 @@ export default function AdminDashboard() {
                           <div>
                             <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1.5">Payment</p>
                             <p className="text-white text-sm capitalize">{order.paymentMethod || "—"}</p>
-                            <p className="text-xs font-mono text-emerald-600 mt-1">{order.id}</p>
+                            <p className="text-xs font-mono text-emerald-400 mt-1">{order.id}</p>
                           </div>
                         </div>
 
@@ -634,6 +711,249 @@ export default function AdminDashboard() {
               </div>
             )}
           </>
+        )}
+        {/* ── Reports Tab ── */}
+        {activeTab === "reports" && (() => {
+          const activeOrders = orders.filter((o) => o.status !== "cancelled");
+          const totalRevenue = activeOrders.reduce((sum, o) => sum + Number(o.total), 0);
+          const avgOrderValue = activeOrders.length ? totalRevenue / activeOrders.length : 0;
+          const topProducts = [...products]
+            .filter((p) => (p.salesCount ?? 0) > 0)
+            .sort((a, b) => (b.salesCount ?? 0) - (a.salesCount ?? 0))
+            .slice(0, 5);
+          const lowStock = products.filter((p) => typeof p.stock === "number" && p.stock <= 5);
+          const recentOrders = [...orders].slice(0, 5);
+          const totalSold = products.reduce((sum, p) => sum + (p.salesCount ?? 0), 0);
+          const maxSales = Math.max(...topProducts.map((p) => p.salesCount ?? 0), 1);
+
+          return (
+            <div className="flex flex-col gap-6">
+              {/* ── KPI cards ── */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: "Total Revenue", value: `R${totalRevenue.toFixed(2)}`, sub: `${activeOrders.length} active orders`, color: "text-green-400" },
+                  { label: "Avg Order Value", value: `R${avgOrderValue.toFixed(2)}`, sub: `across ${orders.length} orders`, color: "text-emerald-300" },
+                  { label: "Units Sold", value: totalSold.toString(), sub: "across all products", color: "text-blue-300" },
+                  { label: "Low Stock Items", value: lowStock.length.toString(), sub: lowStock.length > 0 ? "need restocking" : "all good", color: lowStock.length > 0 ? "text-red-400" : "text-green-400" },
+                ].map(({ label, value, sub, color }) => (
+                  <div key={label} className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                    <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wide mb-2">{label}</p>
+                    <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                    <p className="text-xs text-emerald-400 mt-1">{sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* ── Top selling products ── */}
+                <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                  <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">Top Selling Products</p>
+                  {topProducts.length === 0 ? (
+                    <p className="text-emerald-400 text-sm">No sales recorded yet.</p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {topProducts.map((p, i) => (
+                        <div key={p.id}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs font-bold text-emerald-400 w-4 shrink-0">#{i + 1}</span>
+                              <span className="text-sm text-emerald-200 truncate">{p.name}</span>
+                            </div>
+                            <span className="text-sm font-semibold text-white shrink-0 ml-2">{p.salesCount} sold</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-emerald-800">
+                            <div
+                              className="h-2 rounded-full bg-amber-500 transition-all duration-500"
+                              style={{ width: `${((p.salesCount ?? 0) / maxSales) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Low stock alerts ── */}
+                <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                  <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">
+                    Low Stock Alerts
+                    {lowStock.length > 0 && (
+                      <span className="ml-2 rounded-full bg-red-900/50 border border-red-700 text-red-300 px-2 py-0.5 normal-case font-medium">{lowStock.length}</span>
+                    )}
+                  </p>
+                  {lowStock.length === 0 ? (
+                    <p className="text-emerald-400 text-sm">All products are well stocked.</p>
+                  ) : (
+                    <div className="flex flex-col divide-y divide-emerald-800">
+                      {lowStock.map((p) => (
+                        <div key={p.id} className="flex items-center justify-between py-2.5">
+                          <div className="min-w-0">
+                            <p className="text-sm text-white font-medium truncate">{p.name}</p>
+                            <p className="text-xs text-emerald-400">{p.brand || "—"}</p>
+                          </div>
+                          <span className={`ml-3 shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold ${
+                            (p.stock ?? 0) === 0
+                              ? "bg-red-900/40 border border-red-700 text-red-300"
+                              : "bg-amber-900/40 border border-amber-700 text-amber-300"
+                          }`}>
+                            {(p.stock ?? 0) === 0 ? "Out of stock" : `${p.stock} left`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Recent orders ── */}
+              <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">Recent Orders</p>
+                {recentOrders.length === 0 ? (
+                  <p className="text-emerald-400 text-sm">No orders yet.</p>
+                ) : (
+                  <div className="rounded-xl overflow-hidden border border-emerald-800">
+                    <table className="w-full">
+                      <thead className="bg-emerald-800/80">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Customer</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Items</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Total</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Date</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-emerald-800">
+                        {recentOrders.map((o) => (
+                          <tr key={o.id} className="hover:bg-emerald-800/30 transition-colors">
+                            <td className="px-4 py-3">
+                              <p className="text-sm text-white font-medium">{o.delivery?.fullName || "—"}</p>
+                              <p className="text-xs text-emerald-400 truncate max-w-40">{o.userEmail}</p>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-emerald-200">{(o.items || []).reduce((s, i) => s + i.quantity, 0)} item{(o.items || []).reduce((s, i) => s + i.quantity, 0) !== 1 ? "s" : ""}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-white">R{Number(o.total).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-emerald-300">
+                              {o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short" }) : "—"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusColor[o.status] ?? "bg-emerald-800 border-emerald-700 text-emerald-300"}`}>
+                                {o.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ─── Stock Tab ─── */}
+        {activeTab === "stock" && (
+          <div className="space-y-6">
+            {/* Search bar */}
+            <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-4">
+              <input
+                type="text"
+                placeholder="Search products by name or brand…"
+                value={stockSearch}
+                onChange={(e) => setStockSearch(e.target.value)}
+                className="w-full rounded-xl bg-emerald-800/60 border border-emerald-700 px-4 py-2.5 text-sm text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {loading ? (
+              <p className="text-emerald-400">Loading products…</p>
+            ) : products.length === 0 ? (
+              <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-10 text-center">
+                <p className="text-emerald-400">No products found.</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-emerald-900 border border-emerald-800 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-emerald-800/80">
+                    <tr>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Product</th>
+                      <th className="px-5 py-3.5 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Brand</th>
+                      <th className="px-5 py-3.5 text-center text-xs font-semibold text-emerald-300 uppercase tracking-wide">Current Stock</th>
+                      <th className="px-5 py-3.5 text-center text-xs font-semibold text-emerald-300 uppercase tracking-wide">New Stock</th>
+                      <th className="px-5 py-3.5 text-center text-xs font-semibold text-emerald-300 uppercase tracking-wide">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-800">
+                    {products
+                      .filter((p) => {
+                        const q = stockSearch.toLowerCase();
+                        return (
+                          !q ||
+                          p.name.toLowerCase().includes(q) ||
+                          (p.brand ?? "").toLowerCase().includes(q)
+                        );
+                      })
+                      .map((p) => {
+                        const draft = stockDraft[p.id] ?? String(p.stock ?? 0);
+                        const unchanged = draft === String(p.stock ?? 0);
+                        const stockNum = p.stock ?? 0;
+                        const stockColor =
+                          stockNum === 0
+                            ? "text-red-400"
+                            : stockNum <= 5
+                            ? "text-amber-400"
+                            : "text-emerald-200";
+                        return (
+                          <tr key={p.id} className="hover:bg-emerald-800/40 transition-colors">
+                            {/* Product name */}
+                            <td className="px-5 py-4 font-medium text-white max-w-55 truncate">
+                              {p.name}
+                            </td>
+                            {/* Brand */}
+                            <td className="px-5 py-4 text-emerald-300">
+                              {p.brand ?? "—"}
+                            </td>
+                            {/* Current stock */}
+                            <td className="px-5 py-4 text-center">
+                              <span className={`font-semibold ${stockColor}`}>
+                                {stockNum}
+                                {stockNum === 0 && (
+                                  <span className="ml-1.5 text-xs text-red-400 font-normal">out of stock</span>
+                                )}
+                                {stockNum > 0 && stockNum <= 5 && (
+                                  <span className="ml-1.5 text-xs text-amber-400 font-normal">low</span>
+                                )}
+                              </span>
+                            </td>
+                            {/* New stock input */}
+                            <td className="px-5 py-4 text-center">
+                              <input
+                                type="number"
+                                min={0}
+                                value={draft}
+                                onChange={(e) =>
+                                  setStockDraft((prev) => ({ ...prev, [p.id]: e.target.value }))
+                                }
+                                className="w-24 rounded-xl bg-emerald-800/60 border border-emerald-700 px-3 py-1.5 text-center text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </td>
+                            {/* Save button */}
+                            <td className="px-5 py-4 text-center">
+                              <button
+                                onClick={() => handleSaveStock(p.id)}
+                                disabled={unchanged || savingStock === p.id}
+                                className="rounded-lg bg-emerald-700 hover:bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {savingStock === p.id ? "Saving…" : "Save"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </main>
