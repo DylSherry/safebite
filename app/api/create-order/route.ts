@@ -91,18 +91,23 @@ export async function POST(req: Request) {
       for (let i = 0; i < items.length; i++) {
         const data = productSnaps[i].data()!;
         const currentStock = Number(data.stock);
+        const updates: Record<string, unknown> = {
+          // Always increment salesCount by the quantity ordered
+          salesCount: admin.firestore.FieldValue.increment(items[i].quantity),
+        };
+
         if (!isNaN(currentStock)) {
           console.log(
             `[create-order] Decrementing stock for "${data.name}" (${items[i].id}): ${currentStock} → ${currentStock - items[i].quantity}`
           );
-          tx.update(productRefs[i], {
-            stock: admin.firestore.FieldValue.increment(-items[i].quantity),
-          });
+          updates.stock = admin.firestore.FieldValue.increment(-items[i].quantity);
         } else {
           console.log(
             `[create-order] Skipping stock update for "${data.name}" (${items[i].id}): stock field is "${data.stock}" (not a number)`
           );
         }
+
+        tx.update(productRefs[i], updates);
       }
     });
 
