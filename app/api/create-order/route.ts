@@ -38,25 +38,79 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
+    // Validate item shape
+    for (const item of items) {
+      if (!item.id || typeof item.quantity !== "number" || item.quantity < 1) {
+        return NextResponse.json({ error: "Invalid item in cart" }, { status: 400 });
+      }
+    }
+
     const orderRef = db.collection("orders").doc();
-    const order = {
-      uid,
-      items,
-      total,
-      delivery,
-      paymentMethod,
-      status: "confirmed",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
+    const productRefs = (items as { id: string }[]).map((item) =>
+      db.collection("products").doc(item.id)
+    );
 
-    await orderRef.set(order);
+    // Run everything in a transaction so stock decrements are atomic.
+    // NOTE: Firebase Admin SDK transactions require sequential reads (no Promise.all).
+    await db.runTransaction(async (tx) => {
+      // ── Read phase ───────────────────────────────────────────────────────
+      const productSnaps: admin.firestore.DocumentSnapshot[] = [];
+      for (const ref of productRefs) {
+        productSnaps.push(await tx.get(ref));
+      }
 
-    return NextResponse.json({
-      ok: true,
-      orderId: orderRef.id,
+      // ── Validation phase ─────────────────────────────────────────────────
+      for (let i = 0; i < items.length; i++) {
+        const snap = productSnaps[i];
+        if (!snap.exists) {
+          throw new Error(`Product "${items[i].name || items[i].id}" no longer exists`);
+        }
+        const data = snap.data()!;
+        // Coerce to number in case Firestore stored it as a string
+        const currentStock = Number(data.stock);
+        if (!isNaN(currentStock)) {
+          if (currentStock < items[i].quantity) {
+            throw new Error(
+              `"${data.name}" only has ${currentStock} unit${currentStock === 1 ? "" : "s"} left in stock`
+            );
+          }
+        }
+      }
+
+      // ── Write phase ──────────────────────────────────────────────────────
+      tx.set(orderRef, {
+        uid,
+        items,
+        total,
+        delivery,
+        paymentMethod,
+        status: "confirmed",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      for (let i = 0; i < items.length; i++) {
+        const data = productSnaps[i].data()!;
+        const currentStock = Number(data.stock);
+        if (!isNaN(currentStock)) {
+          console.log(
+            `[create-order] Decrementing stock for "${data.name}" (${items[i].id}): ${currentStock} → ${currentStock - items[i].quantity}`
+          );
+          tx.update(productRefs[i], {
+            stock: admin.firestore.FieldValue.increment(-items[i].quantity),
+          });
+        } else {
+          console.log(
+            `[create-order] Skipping stock update for "${data.name}" (${items[i].id}): stock field is "${data.stock}" (not a number)`
+          );
+        }
+      }
     });
+
+    console.log(`[create-order] Order ${orderRef.id} created successfully for uid ${uid}`);
+    return NextResponse.json({ ok: true, orderId: orderRef.id });
   } catch (err) {
-    console.error("create-order error", err);
-    return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
+    console.error("[create-order] Error:", err);
+    const message = err instanceof Error ? err.message : "Failed to create order";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -41,9 +41,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { id: productId } = await params; // unwrap promise
     const body = await req.json();
     const score = computeSafetyScore(body.allergens);
+    // Ensure numeric fields are stored as numbers, not strings
+    const stockVal = body.stock !== undefined && body.stock !== "" ? Number(body.stock) : undefined;
+    const priceVal = body.price !== undefined ? Number(body.price) : undefined;
 
     await db.collection("products").doc(productId).update({
       ...body,
+      ...(priceVal !== undefined && { price: priceVal }),
+      ...(stockVal !== undefined && !isNaN(stockVal) && { stock: stockVal }),
       safety_score: score,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });

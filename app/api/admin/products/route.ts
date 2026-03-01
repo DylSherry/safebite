@@ -60,9 +60,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const score = computeSafetyScore(body.allergens);
+    // Ensure numeric fields are stored as numbers, not strings
+    const stockVal = body.stock !== undefined && body.stock !== "" ? Number(body.stock) : undefined;
+    const priceVal = body.price !== undefined ? Number(body.price) : undefined;
     const docRef = db.collection("products").doc();
     await docRef.set({
       ...body,
+      ...(priceVal !== undefined && { price: priceVal }),
+      ...(stockVal !== undefined && !isNaN(stockVal) && { stock: stockVal }),
       safety_score: score,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
