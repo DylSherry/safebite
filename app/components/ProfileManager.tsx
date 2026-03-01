@@ -91,7 +91,36 @@ export default function ProfileManager() {
     await updateProfile({ wishlist: current.filter((id) => id !== productId) });
   };
 
-  if (authLoading || loading) return <div className="p-4 text-emerald-200">Loading profile...</div>;
+  if (authLoading || loading) return (
+    <main className="flex-1 overflow-y-auto bg-emerald-950 p-6 animate-pulse">
+      <div className="max-w-2xl mx-auto">
+        {/* Tab bar skeleton */}
+        <div className="flex gap-1 mb-6 rounded-xl bg-emerald-900 border border-emerald-800 p-1">
+          <div className="flex-1 h-10 rounded-lg bg-emerald-800" />
+          <div className="flex-1 h-10 rounded-lg bg-emerald-800/50" />
+        </div>
+        {/* Avatar + name */}
+        <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-6 mb-4 flex items-center gap-4">
+          <div className="h-16 w-16 rounded-full bg-emerald-800 shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-5 w-40 rounded bg-emerald-800" />
+            <div className="h-3 w-56 rounded bg-emerald-800" />
+          </div>
+          <div className="h-9 w-20 rounded-xl bg-emerald-800 shrink-0" />
+        </div>
+        {/* Fields */}
+        <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-6 space-y-5">
+          <div className="h-4 w-36 rounded bg-emerald-800" />
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="space-y-1.5">
+              <div className="h-3 w-24 rounded bg-emerald-800" />
+              <div className="h-10 w-full rounded-xl bg-emerald-800" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </main>
+  );
   if (!user) return <div className="p-4 text-red-400">You must be signed in to view your profile</div>;
   if (error) return <div className="p-4 text-red-400">Error: {error}</div>;
   if (!profile) return <div className="p-4 text-emerald-200">No profile found</div>;

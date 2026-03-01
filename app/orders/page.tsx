@@ -72,7 +72,25 @@ export default function OrdersPage() {
   if (authLoading || (!user && !authLoading)) {
     return (
       <main className="flex-1 overflow-y-auto bg-emerald-950 p-8">
-        <p className="text-emerald-200">Loading…</p>
+        <div className="max-w-4xl mx-auto animate-pulse">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="h-9 w-36 rounded-lg bg-emerald-900" />
+            <div className="h-5 w-32 rounded bg-emerald-900" />
+          </div>
+          <div className="space-y-4">
+            {[0,1,2].map((i) => (
+              <div key={i} className="rounded-lg bg-emerald-900 border border-emerald-800 p-5">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="h-4 w-32 rounded bg-emerald-800" />
+                    <div className="h-3 w-48 rounded bg-emerald-800" />
+                  </div>
+                  <div className="h-5 w-20 rounded bg-emerald-800" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
     );
   }
@@ -94,7 +112,19 @@ export default function OrdersPage() {
         )}
 
         {loading ? (
-          <p className="text-emerald-200">Loading orders…</p>
+          <div className="space-y-4 animate-pulse">
+            {[0,1,2].map((i) => (
+              <div key={i} className="rounded-lg bg-emerald-900 border border-emerald-800 p-5">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="h-4 w-40 rounded bg-emerald-800" />
+                    <div className="h-3 w-52 rounded bg-emerald-800" />
+                  </div>
+                  <div className="h-5 w-20 rounded bg-emerald-800" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : orders.length === 0 ? (
           <div className="rounded-lg bg-emerald-900 border border-emerald-800 p-12 text-center">
             <p className="text-emerald-300 mb-4">You haven't placed any orders yet.</p>

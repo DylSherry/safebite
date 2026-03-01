@@ -474,7 +474,25 @@ function BrowsePageContent() {
 
 export default function BrowsePage() {
   return (
-    <Suspense fallback={<main className="flex-1 overflow-y-auto bg-emerald-950 p-10"><p className="text-emerald-400">Loading…</p></main>}>
+    <Suspense fallback={
+      <main className="flex-1 overflow-y-auto bg-emerald-950 p-6 sm:p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6 h-9 w-40 rounded-xl bg-emerald-900 animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {[0,1,2,3,4,5].map((i) => (
+              <div key={i} className="flex flex-col bg-emerald-900 rounded-lg border border-emerald-800 p-4 animate-pulse">
+                <div className="h-40 w-full mb-4 rounded bg-emerald-800" />
+                <div className="h-4 w-3/4 rounded bg-emerald-800 mb-2" />
+                <div className="h-3 w-1/2 rounded bg-emerald-800 mb-4" />
+                <div className="mt-auto flex justify-end">
+                  <div className="h-9 w-24 rounded bg-emerald-800" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    }>
       <BrowsePageContent />
     </Suspense>
   );

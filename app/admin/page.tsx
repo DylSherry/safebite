@@ -271,7 +271,29 @@ export default function AdminDashboard() {
     }
   };
 
-  if (authLoading || profileLoading) return <div className="p-4 text-emerald-200">Loading...</div>;
+  if (authLoading || profileLoading) return (
+    <main className="flex-1 overflow-y-auto bg-emerald-950 p-6 sm:p-10 animate-pulse">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-8 flex items-center justify-between">
+          <div className="h-9 w-52 rounded-xl bg-emerald-900" />
+          <div className="h-9 w-28 rounded-xl bg-emerald-900" />
+        </div>
+        <div className="flex gap-1 mb-8 rounded-xl bg-emerald-900 p-1 w-fit">
+          {[0,1,2,3].map((i) => <div key={i} className="h-9 w-24 rounded-lg bg-emerald-800" />)}
+        </div>
+        <div className="rounded-2xl bg-emerald-900 border border-emerald-800 overflow-hidden">
+          {[0,1,2,3,4,5].map((i) => (
+            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-emerald-800 last:border-b-0">
+              <div className="h-4 flex-1 rounded bg-emerald-800" />
+              <div className="h-4 w-24 rounded bg-emerald-800" />
+              <div className="h-4 w-16 rounded bg-emerald-800" />
+              <div className="h-8 w-16 rounded-lg bg-emerald-800" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </main>
+  );
   if (!user) return <div className="p-4 text-red-400">Unauthorized</div>;
   if (profile?.role !== "admin") {
     return (
