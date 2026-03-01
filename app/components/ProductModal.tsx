@@ -154,12 +154,12 @@ export default function ProductModal({
             </div>
           </div>
 
-          {/* Certifications */}
-          {product.certifications && product.certifications.length > 0 && (
+          {/* Tags */}
+          {product.tags && product.tags.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wide mb-1.5">Certifications</p>
+              <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wide mb-1.5">Tags</p>
               <div className="flex flex-wrap gap-2">
-                {product.certifications.map((c) => (
+                {product.tags.map((c) => (
                   <span
                     key={c}
                     className="text-xs rounded-full bg-emerald-800 border border-emerald-600 text-emerald-200 px-2.5 py-1"

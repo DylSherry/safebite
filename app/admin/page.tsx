@@ -385,11 +385,11 @@ export default function AdminDashboard() {
                 />
               </div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Certifications <span className="normal-case font-normal text-emerald-400">(comma-separated)</span></label>
+                <label className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Tags <span className="normal-case font-normal text-emerald-400">(comma-separated)</span></label>
                 <textarea
-                  placeholder="e.g. Halaal, Kosher, Organic"
-                  value={(formData.certifications || []).join(", ")}
-                  onChange={(e) => setFormData({ ...formData, certifications: e.target.value.split(",").map((c) => c.trim()) })}
+                  placeholder="e.g. Halaal, Kosher, Organic, vegan"
+                  value={(formData.tags || []).join(", ")}
+                  onChange={(e) => setFormData({ ...formData, tags: e.target.value.split(",").map((c) => c.trim()) })}
                   className="rounded-xl border border-emerald-700 bg-emerald-800 px-4 py-2.5 text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                   rows={2}
                 />

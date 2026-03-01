@@ -21,7 +21,7 @@ type Product = {
   stock?: number;
   image_url?: string;
   allergens?: string[];
-  certifications?: string[];
+  tags?: string[];
   ingredients?: string;
   safety_score?: number;
   salesCount?: number;

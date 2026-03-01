@@ -18,7 +18,7 @@ type Product = {
   stock?: number;
   image_url?: string;
   allergens?: string[];
-  certifications?: string[];
+  tags?: string[];
   ingredients?: string;
   safety_score?: number;
   salesCount?: number;
@@ -103,7 +103,7 @@ function scoreProduct(product: Product, parsed: ParsedPrompt): number {
   score += parsed.allergenFree.length * 12;
 
   const text = [product.name, product.brand, product.category, product.ingredients,
-    ...(product.allergens || []), ...(product.certifications || [])].filter(Boolean).join(" ").toLowerCase();
+    ...(product.allergens || []), ...(product.tags || [])].filter(Boolean).join(" ").toLowerCase();
   for (const kw of parsed.keywords) { if (text.includes(kw)) score += 6; }
 
   score += Math.min((product.salesCount ?? 0) * 0.3, 5);

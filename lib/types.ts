@@ -41,7 +41,7 @@ export interface Product {
   stock?: number;
   image_url?: string;
   allergens?: string[];
-  certifications?: string[];
+  tags?: string[];
   ingredients?: string;
   /** 0-100 safety score derived from allergen list (higher is safer) */
   safety_score?: number;
