@@ -49,9 +49,13 @@ export async function GET(req: Request) {
         const data = doc.data();
         return {
           id: doc.id,
-          ...data,
-          userEmail: emailMap[data.uid] || data.uid || "Unknown",
-          createdAt: data.createdAt?.toDate?.().toISOString() ?? null,
+          uid:           data.uid,
+          userEmail:     emailMap[data.uid] || data.uid || "Unknown",
+          items:         data.items,
+          total:         data.total,
+          delivery:      data.delivery,
+          paymentMethod: data.paymentMethod,
+          createdAt:     data.createdAt?.toDate?.().toISOString() ?? null,
         };
       })
       .sort((a, b) => {
@@ -67,22 +71,4 @@ export async function GET(req: Request) {
   }
 }
 
-export async function PATCH(req: Request) {
-  const authHeader = req.headers.get("authorization") || "";
-  const idToken = authHeader.replace("Bearer ", "");
 
-  if (!idToken || !(await verifyAdmin(idToken))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
-
-  try {
-    const { orderId, status } = await req.json();
-    if (!orderId || !status) {
-      return NextResponse.json({ error: "Missing orderId or status" }, { status: 400 });
-    }
-    await db.collection("orders").doc(orderId).update({ status });
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
-  }
-}

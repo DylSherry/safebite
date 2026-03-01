@@ -27,7 +27,6 @@ type Order = {
   total: number;
   delivery: DeliveryDetails;
   paymentMethod: string;
-  status: string;
   createdAt: string | null;
 };
 
@@ -131,12 +130,8 @@ export default function OrdersPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
                       <span className="text-xs font-mono text-emerald-400 break-all">{order.id}</span>
                       <span className="text-sm text-emerald-300">{date}</span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-900/50 border border-green-700 px-2 py-0.5 text-xs text-green-300 font-medium">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block" />
-                        {order.status}
-                      </span>
                     </div>
-                    <div className="flex items-center gap-4 flex-shrink-0">
+                    <div className="flex items-center gap-4 shrink-0">
                       <span className="font-semibold text-white">R{Number(order.total).toFixed(2)}</span>
                       <svg
                         className={`h-5 w-5 text-emerald-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
@@ -164,15 +159,15 @@ export default function OrdersPage() {
                                 <img
                                   src={item.image_url}
                                   alt={item.name}
-                                  className="h-12 w-12 rounded object-cover bg-emerald-800 flex-shrink-0"
+                                  className="h-12 w-12 rounded object-cover bg-emerald-800 shrink-0"
                                 />
                               )}
-                              <div className="flex-grow min-w-0">
+                              <div className="grow min-w-0">
                                 <p className="text-sm text-white font-medium truncate">{item.name}</p>
                                 {item.brand && <p className="text-xs text-emerald-400">{item.brand}</p>}
                                 <p className="text-xs text-emerald-300">Qty: {item.quantity}</p>
                               </div>
-                              <p className="text-sm text-white font-medium flex-shrink-0">
+                              <p className="text-sm text-white font-medium shrink-0">
                                 R{(item.price * item.quantity).toFixed(2)}
                               </p>
                             </div>

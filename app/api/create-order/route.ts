@@ -84,7 +84,6 @@ export async function POST(req: Request) {
         total,
         delivery,
         paymentMethod,
-        status: "confirmed",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 

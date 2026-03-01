@@ -13,13 +13,10 @@ type Order = {
   userEmail: string;
   items: OrderItem[];
   total: number;
-  status: string;
   paymentMethod: string;
   delivery: { fullName: string; address: string; city: string; postalCode: string };
   createdAt: string | null;
 };
-
-const ORDER_STATUSES = ["confirmed", "processing", "shipped", "delivered", "cancelled"];
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuthRequired();
@@ -35,7 +32,6 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [stockDraft, setStockDraft] = useState<Record<string, string>>({});
   const [savingStock, setSavingStock] = useState<string | null>(null);
   const [stockSearch, setStockSearch] = useState("");
@@ -100,24 +96,6 @@ export default function AdminDashboard() {
       setStatus(err instanceof Error ? err.message : "Failed to load orders");
     } finally {
       setOrdersLoading(false);
-    }
-  };
-
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
-    setUpdatingStatus(orderId);
-    try {
-      const token = await user?.getIdToken();
-      const res = await fetch("/api/admin/orders", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderId, status: newStatus }),
-      });
-      if (!res.ok) throw new Error("Failed to update status");
-      setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Failed to update order");
-    } finally {
-      setUpdatingStatus(null);
     }
   };
 
@@ -216,14 +194,6 @@ export default function AdminDashboard() {
       </main>
     );
   }
-
-  const statusColor: Record<string, string> = {
-    confirmed: "bg-blue-900/40 border-blue-700 text-blue-300",
-    processing: "bg-amber-900/40 border-amber-700 text-amber-300",
-    shipped: "bg-purple-900/40 border-purple-700 text-purple-300",
-    delivered: "bg-green-900/40 border-green-700 text-green-300",
-    cancelled: "bg-red-900/40 border-red-700 text-red-300",
-  };
 
   return (
     <main className="flex-1 overflow-y-auto bg-emerald-950 p-6 sm:p-10">
@@ -634,11 +604,6 @@ export default function AdminDashboard() {
                           {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                         </p>
                       </div>
-                      <span className={`rounded-full border px-3 py-1 text-xs font-semibold shrink-0 ${
-                        statusColor[order.status] ?? "bg-emerald-800 border-emerald-700 text-emerald-300"
-                      }`}>
-                        {order.status}
-                      </span>
                       <svg
                         className={`h-4 w-4 text-emerald-400 shrink-0 transition-transform ${expandedOrder === order.id ? "rotate-180" : ""}`}
                         fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
@@ -684,26 +649,7 @@ export default function AdminDashboard() {
                           </div>
                         </div>
 
-                        {/* Status updater */}
-                        <div>
-                          <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">Update Status</p>
-                          <div className="flex flex-wrap gap-2">
-                            {ORDER_STATUSES.map((s) => (
-                              <button
-                                key={s}
-                                onClick={() => handleUpdateOrderStatus(order.id, s)}
-                                disabled={order.status === s || updatingStatus === order.id}
-                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
-                                  order.status === s
-                                    ? statusColor[s] + " border opacity-80"
-                                    : "bg-emerald-800 border border-emerald-700 text-emerald-300 hover:bg-emerald-700 hover:text-white"
-                                }`}
-                              >
-                                {updatingStatus === order.id && order.status !== s ? "…" : s}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+
                       </div>
                     )}
                   </div>
@@ -714,9 +660,8 @@ export default function AdminDashboard() {
         )}
         {/* ── Reports Tab ── */}
         {activeTab === "reports" && (() => {
-          const activeOrders = orders.filter((o) => o.status !== "cancelled");
-          const totalRevenue = activeOrders.reduce((sum, o) => sum + Number(o.total), 0);
-          const avgOrderValue = activeOrders.length ? totalRevenue / activeOrders.length : 0;
+          const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total), 0);
+          const avgOrderValue = orders.length ? totalRevenue / orders.length : 0;
           const topProducts = [...products]
             .filter((p) => (p.salesCount ?? 0) > 0)
             .sort((a, b) => (b.salesCount ?? 0) - (a.salesCount ?? 0))
@@ -731,7 +676,7 @@ export default function AdminDashboard() {
               {/* ── KPI cards ── */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: "Total Revenue", value: `R${totalRevenue.toFixed(2)}`, sub: `${activeOrders.length} active orders`, color: "text-green-400" },
+                  { label: "Total Revenue", value: `R${totalRevenue.toFixed(2)}`, sub: `${orders.length} orders`, color: "text-green-400" },
                   { label: "Avg Order Value", value: `R${avgOrderValue.toFixed(2)}`, sub: `across ${orders.length} orders`, color: "text-emerald-300" },
                   { label: "Units Sold", value: totalSold.toString(), sub: "across all products", color: "text-blue-300" },
                   { label: "Low Stock Items", value: lowStock.length.toString(), sub: lowStock.length > 0 ? "need restocking" : "all good", color: lowStock.length > 0 ? "text-red-400" : "text-green-400" },
@@ -819,7 +764,6 @@ export default function AdminDashboard() {
                           <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Items</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Total</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-emerald-800">
@@ -833,11 +777,6 @@ export default function AdminDashboard() {
                             <td className="px-4 py-3 text-sm font-semibold text-white">R{Number(o.total).toFixed(2)}</td>
                             <td className="px-4 py-3 text-sm text-emerald-300">
                               {o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short" }) : "—"}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusColor[o.status] ?? "bg-emerald-800 border-emerald-700 text-emerald-300"}`}>
-                                {o.status}
-                              </span>
                             </td>
                           </tr>
                         ))}
