@@ -6,9 +6,25 @@ import { useAuthRequired } from "@/app/hooks/useAuthRequired";
 import { useUserProfile } from "@/app/hooks/useUserProfile";
 import { Product } from "@/lib/types";
 
+type OrderItem = { id: string; name: string; quantity: number; price: number; image_url?: string };
+type Order = {
+  id: string;
+  uid: string;
+  userEmail: string;
+  items: OrderItem[];
+  total: number;
+  status: string;
+  paymentMethod: string;
+  delivery: { fullName: string; address: string; city: string; postalCode: string };
+  createdAt: string | null;
+};
+
+const ORDER_STATUSES = ["confirmed", "processing", "shipped", "delivered", "cancelled"];
+
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuthRequired();
   const { profile, loading: profileLoading } = useUserProfile();
+  const [activeTab, setActiveTab] = useState<"products" | "orders">("products");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -16,13 +32,55 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState<Partial<Product>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    if (profile?.role !== "admin") {
-      return;
-    }
+    if (profile?.role !== "admin") return;
     fetchProducts();
   }, [profile]);
+
+  useEffect(() => {
+    if (profile?.role !== "admin" || activeTab !== "orders") return;
+    fetchOrders();
+  }, [profile, activeTab]);
+
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch("/api/admin/orders", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      const data = await res.json();
+      setOrders(data.orders || []);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to load orders");
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    setUpdatingStatus(orderId);
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId, status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o));
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to update order");
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -120,30 +178,74 @@ export default function AdminDashboard() {
     );
   }
 
+  const statusColor: Record<string, string> = {
+    confirmed: "bg-blue-900/40 border-blue-700 text-blue-300",
+    processing: "bg-amber-900/40 border-amber-700 text-amber-300",
+    shipped: "bg-purple-900/40 border-purple-700 text-purple-300",
+    delivered: "bg-green-900/40 border-green-700 text-green-300",
+    cancelled: "bg-red-900/40 border-red-700 text-red-300",
+  };
+
   return (
     <main className="flex-1 overflow-y-auto bg-emerald-950 p-6 sm:p-10">
       <div className="max-w-6xl mx-auto">
+        {/* ── Header ── */}
         <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-white">Product Management</h1>
+          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
           <div className="flex items-center gap-3">
-            <button
-              onClick={fetchProducts}
-              disabled={loading}
-              className="rounded-xl border border-emerald-700 hover:border-emerald-500 px-4 py-2.5 text-sm font-medium text-emerald-300 hover:text-white transition-colors disabled:opacity-50"
-            >
-              {loading ? "Refreshing…" : "↻ Refresh"}
-            </button>
-            <button
-              onClick={() => {
-                setShowForm(!showForm);
-                setEditingId(null);
-                setFormData({});
-              }}
-              className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors"
-            >
-              {showForm ? "Cancel" : "+ Add Product"}
-            </button>
+            {activeTab === "products" && (
+              <>
+                <button
+                  onClick={fetchProducts}
+                  disabled={loading}
+                  className="rounded-xl border border-emerald-700 hover:border-emerald-500 px-4 py-2.5 text-sm font-medium text-emerald-300 hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {loading ? "Refreshing…" : "↻ Refresh"}
+                </button>
+                <button
+                  onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({}); }}
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors"
+                >
+                  {showForm ? "Cancel" : "+ Add Product"}
+                </button>
+              </>
+            )}
+            {activeTab === "orders" && (
+              <button
+                onClick={fetchOrders}
+                disabled={ordersLoading}
+                className="rounded-xl border border-emerald-700 hover:border-emerald-500 px-4 py-2.5 text-sm font-medium text-emerald-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                {ordersLoading ? "Refreshing…" : "↻ Refresh"}
+              </button>
+            )}
           </div>
+        </div>
+
+        {/* ── Tab switcher ── */}
+        <div className="flex gap-1 mb-8 rounded-xl bg-emerald-900 border border-emerald-800 p-1 w-fit">
+          <button
+            onClick={() => setActiveTab("products")}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === "products"
+                ? "bg-emerald-600 text-white"
+                : "text-emerald-400 hover:text-white"
+            }`}
+          >
+            Products
+          </button>
+          <button
+            onClick={() => setActiveTab("orders")}
+            className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+              activeTab === "orders"
+                ? "bg-emerald-600 text-white"
+                : "text-emerald-400 hover:text-white"
+            }`}
+          >
+            Orders {orders.length > 0 && activeTab !== "orders" && (
+              <span className="ml-1.5 rounded-full bg-emerald-700 px-1.5 py-0.5 text-xs">{orders.length}</span>
+            )}
+          </button>
         </div>
 
         {status && (
@@ -158,6 +260,9 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* ── Products Tab ── */}
+        {activeTab === "products" && (
+          <>
         {showForm && (
           <div className="mb-8 rounded-2xl bg-emerald-900 border border-emerald-800 p-7">
             <h2 className="text-xl font-bold text-white mb-6">{editingId ? "Edit Product" : "New Product"}</h2>
@@ -420,6 +525,115 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+        )}
+          </>
+        )}
+
+        {/* ── Orders Tab ── */}
+        {activeTab === "orders" && (
+          <>
+            {ordersLoading ? (
+              <p className="text-emerald-400">Loading orders…</p>
+            ) : orders.length === 0 ? (
+              <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-10 text-center">
+                <p className="text-emerald-400">No orders yet.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {orders.map((order) => (
+                  <div key={order.id} className="rounded-2xl bg-emerald-900 border border-emerald-800 overflow-hidden">
+                    {/* Order header row */}
+                    <button
+                      onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+                      className="w-full flex flex-wrap items-center gap-4 px-5 py-4 hover:bg-emerald-800/40 transition-colors text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-semibold text-sm truncate">{order.delivery?.fullName || "Unknown"}</p>
+                        <p className="text-emerald-400 text-xs truncate">{order.userEmail}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-white font-semibold text-sm">R{Number(order.total).toFixed(2)}</p>
+                        <p className="text-emerald-500 text-xs">
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                        </p>
+                      </div>
+                      <span className={`rounded-full border px-3 py-1 text-xs font-semibold shrink-0 ${
+                        statusColor[order.status] ?? "bg-emerald-800 border-emerald-700 text-emerald-300"
+                      }`}>
+                        {order.status}
+                      </span>
+                      <svg
+                        className={`h-4 w-4 text-emerald-400 shrink-0 transition-transform ${expandedOrder === order.id ? "rotate-180" : ""}`}
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Expanded details */}
+                    {expandedOrder === order.id && (
+                      <div className="border-t border-emerald-800 px-5 py-5 flex flex-col gap-5">
+                        {/* Items list */}
+                        <div>
+                          <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-3">Items</p>
+                          <div className="flex flex-col gap-2">
+                            {(order.items || []).map((item: OrderItem, i: number) => (
+                              <div key={i} className="flex items-center gap-3">
+                                {item.image_url && (
+                                  <img src={item.image_url} alt={item.name} className="h-10 w-10 rounded-lg object-cover shrink-0" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                                  <p className="text-emerald-400 text-xs">Qty: {item.quantity} × R{Number(item.price).toFixed(2)}</p>
+                                </div>
+                                <p className="text-emerald-200 text-sm font-semibold shrink-0">R{(item.quantity * item.price).toFixed(2)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Delivery & payment */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1.5">Delivery</p>
+                            <p className="text-white text-sm">{order.delivery?.fullName}</p>
+                            <p className="text-emerald-300 text-sm">{order.delivery?.address}</p>
+                            <p className="text-emerald-300 text-sm">{order.delivery?.city}, {order.delivery?.postalCode}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-1.5">Payment</p>
+                            <p className="text-white text-sm capitalize">{order.paymentMethod || "—"}</p>
+                            <p className="text-xs font-mono text-emerald-600 mt-1">{order.id}</p>
+                          </div>
+                        </div>
+
+                        {/* Status updater */}
+                        <div>
+                          <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">Update Status</p>
+                          <div className="flex flex-wrap gap-2">
+                            {ORDER_STATUSES.map((s) => (
+                              <button
+                                key={s}
+                                onClick={() => handleUpdateOrderStatus(order.id, s)}
+                                disabled={order.status === s || updatingStatus === order.id}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
+                                  order.status === s
+                                    ? statusColor[s] + " border opacity-80"
+                                    : "bg-emerald-800 border border-emerald-700 text-emerald-300 hover:bg-emerald-700 hover:text-white"
+                                }`}
+                              >
+                                {updatingStatus === order.id && order.status !== s ? "…" : s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </main>
