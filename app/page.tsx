@@ -69,7 +69,10 @@ export default function Home() {
     return Math.max(0, 100 - count * 10);
   };
 
+  const isOutOfStock = (p: Product) => typeof p.stock === "number" && p.stock <= 0;
+
   const handleQuickAdd = (product: Product) => {
+    if (isOutOfStock(product)) return;
     const effectiveP = product.isOnPromotion && product.promotionPrice != null ? product.promotionPrice : product.price;
     addToCart({
       id: product.id,
@@ -80,6 +83,7 @@ export default function Home() {
       brand: product.brand,
       allergens: product.allergens,
       safety_score: product.safety_score ?? computeScore(product.allergens),
+      stock: product.stock,
     });
 
     setAddedItems((prev) => new Set(prev).add(product.id));
@@ -159,22 +163,30 @@ export default function Home() {
       <div className="relative h-28 bg-emerald-800">
         {p.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+          <img src={p.image_url} alt={p.name} className={`h-full w-full object-cover ${isOutOfStock(p) ? "opacity-40" : ""}`} />
         ) : (
           <div className="h-full flex items-center justify-center text-emerald-500 text-xs">No image</div>
         )}
-        {showDiscount && p.promotionPrice != null && (
-          <span className="absolute top-2 right-2 rounded-full bg-amber-500 text-white text-xs font-bold px-2 py-0.5">
-            -{Math.round(((p.price - p.promotionPrice) / p.price) * 100)}%
+        {isOutOfStock(p) ? (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <span className="rounded-full bg-black/70 text-white text-xs font-bold px-2.5 py-0.5">Out of Stock</span>
           </span>
-        )}
-        {rank != null && (
-          <span className="absolute top-2 left-2 rounded-full bg-emerald-950/80 text-emerald-300 text-xs font-bold px-2 py-0.5 border border-emerald-700">
-            #{rank + 1}
-          </span>
-        )}
-        {p.isFeatured && rank == null && !showDiscount && (
-          <span className="absolute top-2 right-2 rounded-full bg-emerald-600 text-white text-xs font-semibold px-2 py-0.5">Featured</span>
+        ) : (
+          <>
+            {showDiscount && p.promotionPrice != null && (
+              <span className="absolute top-2 right-2 rounded-full bg-amber-500 text-white text-xs font-bold px-2 py-0.5">
+                -{Math.round(((p.price - p.promotionPrice) / p.price) * 100)}%
+              </span>
+            )}
+            {rank != null && (
+              <span className="absolute top-2 left-2 rounded-full bg-emerald-950/80 text-emerald-300 text-xs font-bold px-2 py-0.5 border border-emerald-700">
+                #{rank + 1}
+              </span>
+            )}
+            {p.isFeatured && rank == null && !showDiscount && (
+              <span className="absolute top-2 right-2 rounded-full bg-emerald-600 text-white text-xs font-semibold px-2 py-0.5">Featured</span>
+            )}
+          </>
         )}
       </div>
       <div className="p-3">
@@ -192,15 +204,18 @@ export default function Home() {
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); handleQuickAdd(p); }}
+          disabled={isOutOfStock(p)}
           className={`mt-2 w-full rounded-full py-1.5 text-xs font-semibold transition-colors ${
-            addedItems.has(p.id)
+            isOutOfStock(p)
+              ? "bg-emerald-900 text-emerald-600 cursor-not-allowed"
+              : addedItems.has(p.id)
               ? "bg-green-500 text-white"
               : showDiscount
               ? "bg-amber-500 hover:bg-amber-400 text-white"
               : "bg-emerald-600 hover:bg-emerald-500 text-white"
           }`}
         >
-          {addedItems.has(p.id) ? "✓ Added" : "Add to Cart"}
+          {isOutOfStock(p) ? "Out of Stock" : addedItems.has(p.id) ? "✓ Added" : "Add to Cart"}
         </button>
       </div>
     </article>

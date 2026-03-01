@@ -67,7 +67,10 @@ export default function BrowsePage() {
     return Math.max(0, 100 - count * 10);
   };
 
+  const isOutOfStock = (p: Product) => typeof p.stock === "number" && p.stock <= 0;
+
   const handleQuickAdd = (product: Product) => {
+    if (isOutOfStock(product)) return;
     const effectiveP = product.isOnPromotion && product.promotionPrice != null ? product.promotionPrice : product.price;
     addToCart({
       id: product.id,
@@ -78,6 +81,7 @@ export default function BrowsePage() {
       brand: product.brand,
       allergens: product.allergens,
       safety_score: product.safety_score ?? computeScore(product.allergens),
+      stock: product.stock,
     });
     setAddedItems((prev) => new Set(prev).add(product.id));
     setTimeout(() => {
@@ -208,15 +212,19 @@ export default function BrowsePage() {
                 <div className="relative h-40 w-full mb-4 rounded-lg overflow-hidden bg-emerald-800 flex items-center justify-center">
                   {p.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                    <img src={p.image_url} alt={p.name} className={`h-full w-full object-cover ${isOutOfStock(p) ? "opacity-40" : ""}`} />
                   ) : (
                     <div className="text-emerald-400 text-sm">No image</div>
                   )}
-                  {p.isOnPromotion && p.promotionPrice != null && (
+                  {isOutOfStock(p) ? (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="rounded-full bg-black/70 text-white text-xs font-bold px-3 py-1">Out of Stock</span>
+                    </span>
+                  ) : p.isOnPromotion && p.promotionPrice != null ? (
                     <span className="absolute top-2 right-2 rounded-full bg-amber-500 text-white text-xs font-bold px-2 py-0.5">
                       -{Math.round(((p.price - p.promotionPrice) / p.price) * 100)}%
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <div className="mb-2">
                   <h2 className="text-lg font-medium text-white">{p.name}</h2>
@@ -250,11 +258,16 @@ export default function BrowsePage() {
                   </span>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleQuickAdd(p); }}
+                    disabled={isOutOfStock(p)}
                     className={`rounded-full px-4 py-2 text-white font-medium transition-colors text-sm ${
-                      addedItems.has(p.id) ? "bg-green-500 hover:bg-green-600" : "bg-emerald-600 hover:bg-emerald-500"
+                      isOutOfStock(p)
+                        ? "bg-emerald-900 text-emerald-600 cursor-not-allowed"
+                        : addedItems.has(p.id)
+                        ? "bg-green-500 hover:bg-green-600"
+                        : "bg-emerald-600 hover:bg-emerald-500"
                     }`}
                   >
-                    {addedItems.has(p.id) ? "✓ Added" : "Quick Add"}
+                    {isOutOfStock(p) ? "Out of Stock" : addedItems.has(p.id) ? "✓ Added" : "Quick Add"}
                   </button>
                 </div>
               </article>

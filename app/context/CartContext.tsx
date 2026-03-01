@@ -15,6 +15,8 @@ export type CartItem = {
   allergens?: string[];
   /** cached safety score (0–100) */
   safety_score?: number;
+  /** Current stock level – used to cap quantity in the cart UI */
+  stock?: number;
 };
 
 type CartContextType = {

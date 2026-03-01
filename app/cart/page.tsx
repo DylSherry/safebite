@@ -84,12 +84,23 @@ export default function CartPage() {
                     </button>
                     <span className="px-3 py-1 text-sm text-white">{item.quantity}</span>
                     <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="px-2 py-1 text-white hover:bg-emerald-800"
+                      onClick={() => {
+                        const maxQty = typeof item.stock === "number" ? item.stock : Infinity;
+                        if (item.quantity < maxQty) updateQuantity(item.id, item.quantity + 1);
+                      }}
+                      disabled={typeof item.stock === "number" && item.quantity >= item.stock}
+                      className={`px-2 py-1 text-white ${
+                        typeof item.stock === "number" && item.quantity >= item.stock
+                          ? "opacity-30 cursor-not-allowed"
+                          : "hover:bg-emerald-800"
+                      }`}
                     >
                       +
                     </button>
                   </div>
+                  {typeof item.stock === "number" && item.quantity >= item.stock && (
+                    <p className="text-xs text-amber-400 mt-1">{item.stock === 0 ? "Out of stock" : `Max ${item.stock} available`}</p>
+                  )}
                 </div>
               </div>
             ))}
