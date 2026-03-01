@@ -35,6 +35,7 @@ export default function AdminDashboard() {
   const [stockDraft, setStockDraft] = useState<Record<string, string>>({});
   const [savingStock, setSavingStock] = useState<string | null>(null);
   const [stockSearch, setStockSearch] = useState("");
+  const [reportTab, setReportTab] = useState<"financial" | "product" | "customer">("financial");
 
   useEffect(() => {
     if (profile?.role !== "admin") return;
@@ -660,131 +661,309 @@ export default function AdminDashboard() {
         )}
         {/* ── Reports Tab ── */}
         {activeTab === "reports" && (() => {
-          const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total), 0);
-          const avgOrderValue = orders.length ? totalRevenue / orders.length : 0;
+          // ── Shared derived data ──────────────────────────────────────────────
+          const totalRevenue    = orders.reduce((s, o) => s + Number(o.total), 0);
+          const avgOrderValue   = orders.length ? totalRevenue / orders.length : 0;
+          const totalSold       = products.reduce((s, p) => s + (p.salesCount ?? 0), 0);
+          // Simulated cost of sales: assume 55% margin → COGS ≈ 45% of revenue
+          const cogs            = totalRevenue * 0.45;
+          const grossProfit     = totalRevenue - cogs;
+          const grossMarginPct  = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+          // Monthly revenue (last 6 months)
+          const now = new Date();
+          const monthLabels = Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+            return { key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: d.toLocaleDateString("en-ZA", { month: "short", year: "2-digit" }) };
+          });
+          const monthlyRevenue = Object.fromEntries(monthLabels.map(({ key }) => [key, 0]));
+          orders.forEach((o) => {
+            if (!o.createdAt) return;
+            const d   = new Date(o.createdAt);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+            if (key in monthlyRevenue) monthlyRevenue[key] += Number(o.total);
+          });
+          const maxMonthly = Math.max(...Object.values(monthlyRevenue), 1);
+
+          // Top products
           const topProducts = [...products]
             .filter((p) => (p.salesCount ?? 0) > 0)
             .sort((a, b) => (b.salesCount ?? 0) - (a.salesCount ?? 0))
             .slice(0, 5);
-          const lowStock = products.filter((p) => typeof p.stock === "number" && p.stock <= 5);
-          const recentOrders = [...orders].slice(0, 5);
-          const totalSold = products.reduce((sum, p) => sum + (p.salesCount ?? 0), 0);
           const maxSales = Math.max(...topProducts.map((p) => p.salesCount ?? 0), 1);
+
+          // Category breakdown
+          const catMap: Record<string, number> = {};
+          products.forEach((p) => {
+            const cat = p.category || "Uncategorised";
+            catMap[cat] = (catMap[cat] ?? 0) + (p.salesCount ?? 0);
+          });
+          const catEntries = Object.entries(catMap).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+          const maxCat = Math.max(...catEntries.map(([, v]) => v), 1);
+
+          // Low stock
+          const lowStock = products.filter((p) => typeof p.stock === "number" && p.stock <= 5);
+
+          // Customer stats
+          const customerMap: Record<string, { email: string; name: string; orders: number; spend: number }> = {};
+          orders.forEach((o) => {
+            if (!o.uid) return;
+            if (!customerMap[o.uid]) customerMap[o.uid] = { email: o.userEmail ?? "—", name: o.delivery?.fullName ?? "—", orders: 0, spend: 0 };
+            customerMap[o.uid].orders += 1;
+            customerMap[o.uid].spend  += Number(o.total);
+          });
+          const customers     = Object.entries(customerMap).map(([uid, v]) => ({ uid, ...v }));
+          const topBuyers     = [...customers].sort((a, b) => b.spend - a.spend).slice(0, 5);
+          const maxSpend      = Math.max(...topBuyers.map((c) => c.spend), 1);
+          const repeatBuyers  = customers.filter((c) => c.orders > 1).length;
+          const avgOrdersPerCustomer = customers.length ? (orders.length / customers.length) : 0;
+
+          const KpiCard = ({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) => (
+            <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+              <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wide mb-2">{label}</p>
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              <p className="text-xs text-emerald-400 mt-1">{sub}</p>
+            </div>
+          );
 
           return (
             <div className="flex flex-col gap-6">
-              {/* ── KPI cards ── */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: "Total Revenue", value: `R${totalRevenue.toFixed(2)}`, sub: `${orders.length} orders`, color: "text-green-400" },
-                  { label: "Avg Order Value", value: `R${avgOrderValue.toFixed(2)}`, sub: `across ${orders.length} orders`, color: "text-emerald-300" },
-                  { label: "Units Sold", value: totalSold.toString(), sub: "across all products", color: "text-blue-300" },
-                  { label: "Low Stock Items", value: lowStock.length.toString(), sub: lowStock.length > 0 ? "need restocking" : "all good", color: lowStock.length > 0 ? "text-red-400" : "text-green-400" },
-                ].map(({ label, value, sub, color }) => (
-                  <div key={label} className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
-                    <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wide mb-2">{label}</p>
-                    <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                    <p className="text-xs text-emerald-400 mt-1">{sub}</p>
-                  </div>
+              {/* Sub-tab switcher */}
+              <div className="flex gap-1 rounded-xl bg-emerald-900/70 border border-emerald-800 p-1 w-fit">
+                {(["financial", "product", "customer"] as const).map((rt) => (
+                  <button
+                    key={rt}
+                    onClick={() => setReportTab(rt)}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize transition-colors ${
+                      reportTab === rt ? "bg-emerald-700 text-white shadow" : "text-emerald-400 hover:text-white"
+                    }`}
+                  >
+                    {rt === "financial" ? "Financial" : rt === "product" ? "Product" : "Customer"}
+                  </button>
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* ── Top selling products ── */}
-                <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
-                  <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">Top Selling Products</p>
-                  {topProducts.length === 0 ? (
-                    <p className="text-emerald-400 text-sm">No sales recorded yet.</p>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {topProducts.map((p, i) => (
-                        <div key={p.id}>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-bold text-emerald-400 w-4 shrink-0">#{i + 1}</span>
-                              <span className="text-sm text-emerald-200 truncate">{p.name}</span>
-                            </div>
-                            <span className="text-sm font-semibold text-white shrink-0 ml-2">{p.salesCount} sold</span>
-                          </div>
-                          <div className="h-2 rounded-full bg-emerald-800">
-                            <div
-                              className="h-2 rounded-full bg-amber-500 transition-all duration-500"
-                              style={{ width: `${((p.salesCount ?? 0) / maxSales) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Low stock alerts ── */}
-                <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
-                  <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">
-                    Low Stock Alerts
-                    {lowStock.length > 0 && (
-                      <span className="ml-2 rounded-full bg-red-900/50 border border-red-700 text-red-300 px-2 py-0.5 normal-case font-medium">{lowStock.length}</span>
-                    )}
-                  </p>
-                  {lowStock.length === 0 ? (
-                    <p className="text-emerald-400 text-sm">All products are well stocked.</p>
-                  ) : (
-                    <div className="flex flex-col divide-y divide-emerald-800">
-                      {lowStock.map((p) => (
-                        <div key={p.id} className="flex items-center justify-between py-2.5">
-                          <div className="min-w-0">
-                            <p className="text-sm text-white font-medium truncate">{p.name}</p>
-                            <p className="text-xs text-emerald-400">{p.brand || "—"}</p>
-                          </div>
-                          <span className={`ml-3 shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold ${
-                            (p.stock ?? 0) === 0
-                              ? "bg-red-900/40 border border-red-700 text-red-300"
-                              : "bg-amber-900/40 border border-amber-700 text-amber-300"
-                          }`}>
-                            {(p.stock ?? 0) === 0 ? "Out of stock" : `${p.stock} left`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ── Recent orders ── */}
-              <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
-                <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">Recent Orders</p>
-                {recentOrders.length === 0 ? (
-                  <p className="text-emerald-400 text-sm">No orders yet.</p>
-                ) : (
-                  <div className="rounded-xl overflow-hidden border border-emerald-800">
-                    <table className="w-full">
-                      <thead className="bg-emerald-800/80">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Customer</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Items</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Total</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-emerald-800">
-                        {recentOrders.map((o) => (
-                          <tr key={o.id} className="hover:bg-emerald-800/30 transition-colors">
-                            <td className="px-4 py-3">
-                              <p className="text-sm text-white font-medium">{o.delivery?.fullName || "—"}</p>
-                              <p className="text-xs text-emerald-400 truncate max-w-40">{o.userEmail}</p>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-emerald-200">{(o.items || []).reduce((s, i) => s + i.quantity, 0)} item{(o.items || []).reduce((s, i) => s + i.quantity, 0) !== 1 ? "s" : ""}</td>
-                            <td className="px-4 py-3 text-sm font-semibold text-white">R{Number(o.total).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-emerald-300">
-                              {o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short" }) : "—"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              {/* ── Financial Report ── */}
+              {reportTab === "financial" && (
+                <div className="flex flex-col gap-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <KpiCard label="Total Revenue"   value={`R${totalRevenue.toFixed(2)}`}   sub={`${orders.length} orders`}            color="text-green-400" />
+                    <KpiCard label="Cost of Sales"   value={`R${cogs.toFixed(2)}`}            sub="est. 45% of revenue"                   color="text-amber-300" />
+                    <KpiCard label="Gross Profit"    value={`R${grossProfit.toFixed(2)}`}     sub={`${grossMarginPct.toFixed(1)}% margin`} color="text-emerald-300" />
+                    <KpiCard label="Avg Order Value" value={`R${avgOrderValue.toFixed(2)}`}   sub={`across ${orders.length} orders`}     color="text-blue-300" />
                   </div>
-                )}
-              </div>
+
+                  {/* Monthly revenue bar chart */}
+                  <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                    <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-5">Revenue — Last 6 Months</p>
+                    <div className="flex items-end gap-3 h-36">
+                      {monthLabels.map(({ key, label }) => {
+                        const val  = monthlyRevenue[key] ?? 0;
+                        const pct  = (val / maxMonthly) * 100;
+                        return (
+                          <div key={key} className="flex flex-col items-center gap-1 flex-1">
+                            <span className="text-xs text-emerald-300 font-medium">R{val > 0 ? val.toFixed(0) : "0"}</span>
+                            <div className="w-full rounded-t-lg bg-emerald-800 relative" style={{ height: "80px" }}>
+                              <div
+                                className="absolute bottom-0 w-full rounded-t-lg bg-emerald-500 transition-all duration-500"
+                                style={{ height: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-emerald-400">{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Recent orders table */}
+                  <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                    <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">Recent Orders</p>
+                    {orders.length === 0 ? <p className="text-emerald-400 text-sm">No orders yet.</p> : (
+                      <div className="rounded-xl overflow-hidden border border-emerald-800">
+                        <table className="w-full">
+                          <thead className="bg-emerald-800/80">
+                            <tr>
+                              {["Customer","Items","Total","Date"].map((h) => (
+                                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-emerald-800">
+                            {[...orders].slice(0, 8).map((o) => (
+                              <tr key={o.id} className="hover:bg-emerald-800/30 transition-colors">
+                                <td className="px-4 py-3">
+                                  <p className="text-sm text-white font-medium">{o.delivery?.fullName || "—"}</p>
+                                  <p className="text-xs text-emerald-400 truncate max-w-40">{o.userEmail}</p>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-emerald-200">{(o.items||[]).reduce((s,i)=>s+i.quantity,0)} item{(o.items||[]).reduce((s,i)=>s+i.quantity,0)!==1?"s":""}</td>
+                                <td className="px-4 py-3 text-sm font-semibold text-white">R{Number(o.total).toFixed(2)}</td>
+                                <td className="px-4 py-3 text-sm text-emerald-300">{o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-ZA",{day:"numeric",month:"short",year:"2-digit"}) : "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Product Report ── */}
+              {reportTab === "product" && (
+                <div className="flex flex-col gap-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <KpiCard label="Total Products"   value={products.length.toString()}        sub="in catalogue"              color="text-emerald-300" />
+                    <KpiCard label="Units Sold"        value={totalSold.toString()}              sub="across all products"       color="text-blue-300" />
+                    <KpiCard label="On Promotion"      value={products.filter(p=>p.isOnPromotion).length.toString()}  sub="active discounts"  color="text-amber-300" />
+                    <KpiCard label="Low / Out of Stock" value={lowStock.length.toString()}       sub={lowStock.length>0?"need restocking":"all good"} color={lowStock.length>0?"text-red-400":"text-green-400"} />
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Top sellers */}
+                    <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                      <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">Best-Selling Products</p>
+                      {topProducts.length === 0 ? <p className="text-emerald-400 text-sm">No sales recorded yet.</p> : (
+                        <div className="flex flex-col gap-3">
+                          {topProducts.map((p, i) => (
+                            <div key={p.id}>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-xs font-bold text-emerald-400 w-4 shrink-0">#{i+1}</span>
+                                  <span className="text-sm text-emerald-200 truncate">{p.name}</span>
+                                  {p.category && <span className="text-xs text-emerald-500 shrink-0">({p.category})</span>}
+                                </div>
+                                <span className="text-sm font-semibold text-white shrink-0 ml-2">{p.salesCount} sold</span>
+                              </div>
+                              <div className="h-2 rounded-full bg-emerald-800">
+                                <div className="h-2 rounded-full bg-amber-500 transition-all duration-500" style={{ width: `${((p.salesCount??0)/maxSales)*100}%` }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Category breakdown */}
+                    <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                      <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">Sales by Category</p>
+                      {catEntries.length === 0 ? <p className="text-emerald-400 text-sm">No category sales yet.</p> : (
+                        <div className="flex flex-col gap-3">
+                          {catEntries.map(([cat, count]) => (
+                            <div key={cat}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm text-emerald-200 truncate">{cat}</span>
+                                <span className="text-sm font-semibold text-white shrink-0 ml-2">{count} sold</span>
+                              </div>
+                              <div className="h-2 rounded-full bg-emerald-800">
+                                <div className="h-2 rounded-full bg-blue-500 transition-all duration-500" style={{ width: `${(count/maxCat)*100}%` }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Low stock alerts */}
+                  <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                    <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">
+                      Low Stock Alerts
+                      {lowStock.length > 0 && <span className="ml-2 rounded-full bg-red-900/50 border border-red-700 text-red-300 px-2 py-0.5 normal-case font-medium">{lowStock.length}</span>}
+                    </p>
+                    {lowStock.length === 0 ? <p className="text-emerald-400 text-sm">All products are well stocked.</p> : (
+                      <div className="flex flex-col divide-y divide-emerald-800">
+                        {lowStock.map((p) => (
+                          <div key={p.id} className="flex items-center justify-between py-2.5">
+                            <div className="min-w-0">
+                              <p className="text-sm text-white font-medium truncate">{p.name}</p>
+                              <p className="text-xs text-emerald-400">{p.brand || "—"} {p.category ? `· ${p.category}` : ""}</p>
+                            </div>
+                            <span className={`ml-3 shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold ${
+                              (p.stock??0)===0 ? "bg-red-900/40 border border-red-700 text-red-300" : "bg-amber-900/40 border border-amber-700 text-amber-300"
+                            }`}>{(p.stock??0)===0?"Out of stock":`${p.stock} left`}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Customer Report ── */}
+              {reportTab === "customer" && (
+                <div className="flex flex-col gap-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <KpiCard label="Unique Customers"      value={customers.length.toString()}                  sub="have placed orders"          color="text-emerald-300" />
+                    <KpiCard label="Total Orders"          value={orders.length.toString()}                     sub="all time"                    color="text-blue-300" />
+                    <KpiCard label="Repeat Buyers"         value={repeatBuyers.toString()}                      sub={`${customers.length>0?((repeatBuyers/customers.length)*100).toFixed(0):0}% of customers`} color="text-amber-300" />
+                    <KpiCard label="Orders / Customer"     value={avgOrdersPerCustomer.toFixed(1)}              sub="average"                    color="text-purple-300" />
+                  </div>
+
+                  {/* Top buyers */}
+                  <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                    <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">Top Buyers by Spend</p>
+                    {topBuyers.length === 0 ? <p className="text-emerald-400 text-sm">No customer orders yet.</p> : (
+                      <div className="flex flex-col gap-3">
+                        {topBuyers.map((c, i) => (
+                          <div key={c.uid}>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs font-bold text-emerald-400 w-4 shrink-0">#{i+1}</span>
+                                <div className="min-w-0">
+                                  <p className="text-sm text-white font-medium truncate">{c.name}</p>
+                                  <p className="text-xs text-emerald-400 truncate">{c.email}</p>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0 ml-3">
+                                <p className="text-sm font-semibold text-white">R{c.spend.toFixed(2)}</p>
+                                <p className="text-xs text-emerald-400">{c.orders} order{c.orders!==1?"s":""}</p>
+                              </div>
+                            </div>
+                            <div className="h-2 rounded-full bg-emerald-800">
+                              <div className="h-2 rounded-full bg-purple-500 transition-all duration-500" style={{ width: `${(c.spend/maxSpend)*100}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* All customers table */}
+                  <div className="rounded-2xl bg-emerald-900 border border-emerald-800 p-5">
+                    <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-4">All Customers</p>
+                    {customers.length === 0 ? <p className="text-emerald-400 text-sm">No customers yet.</p> : (
+                      <div className="rounded-xl overflow-hidden border border-emerald-800">
+                        <table className="w-full">
+                          <thead className="bg-emerald-800/80">
+                            <tr>
+                              {["Name / Email","Orders","Total Spend"].map((h) => (
+                                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-emerald-300 uppercase tracking-wide">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-emerald-800">
+                            {[...customers].sort((a,b)=>b.spend-a.spend).map((c) => (
+                              <tr key={c.uid} className="hover:bg-emerald-800/30 transition-colors">
+                                <td className="px-4 py-3">
+                                  <p className="text-sm text-white font-medium">{c.name}</p>
+                                  <p className="text-xs text-emerald-400 truncate max-w-48">{c.email}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                    c.orders > 1 ? "bg-amber-900/40 border border-amber-700 text-amber-300" : "bg-emerald-800 text-emerald-300"
+                                  }`}>{c.orders} order{c.orders!==1?"s":""}</span>
+                                </td>
+                                <td className="px-4 py-3 text-sm font-semibold text-white">R{c.spend.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
