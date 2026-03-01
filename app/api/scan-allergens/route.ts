@@ -47,15 +47,16 @@ export async function POST(req: NextRequest) {
       "Look at this ingredient label. List all ingredients and identify if any of the following allergens are present: [Peanuts, Dairy, Gluten, Soy]. Return the result in JSON format with keys: ingredients (array of strings), allergensFound (array of strings).";
 
     // Use Gemini multimodal model (latest public vision model)
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-    const result = await model.generateContent([
-      { text: prompt },
-      { inlineData: { data: imageBase64, mimeType: "image/jpeg" } },
-    ], {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3-flash-preview",
       safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       ],
     });
+    const result = await model.generateContent([
+      { text: prompt },
+      { inlineData: { data: imageBase64, mimeType: "image/jpeg" } },
+    ]);
 
     const response = await result.response;
     const text = response.text();
