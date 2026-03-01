@@ -8,6 +8,7 @@ import { useUserProfile } from "../hooks/useUserProfile";
 import CartSidebar from "../components/CartSidebar";
 import FilterSidebar from "../components/FilterSidebar";
 import ProductModal from "../components/ProductModal";
+import { useSearchParams, useRouter } from "next/navigation";
 
 type Product = {
   id: string;
@@ -29,6 +30,98 @@ type Product = {
 
 // (ProductModal lives in app/components/ProductModal.tsx)
 
+// ── Smart prompt search ──────────────────────────────────────────────────────
+type ParsedPrompt = {
+  maxPrice: number | null;
+  minPrice: number | null;
+  allergenFree: string[];
+  keywords: string[];
+  raw: string;
+};
+
+const ALLERGEN_TRIGGERS: { family: string; allergenWords: string[]; phrases: string[] }[] = [
+  { family: "nuts",   allergenWords: ["nuts","nut","peanut","peanuts"],                   phrases: ["nut-free","nut free","no nuts","peanut-free","peanut free","no peanuts"] },
+  { family: "dairy",  allergenWords: ["dairy","milk","lactose","cream","cheese","butter"], phrases: ["dairy-free","dairy free","no dairy","lactose-free","lactose free","milk-free","milk free","no milk"] },
+  { family: "gluten", allergenWords: ["gluten","wheat"],                                  phrases: ["gluten-free","gluten free","no gluten","wheat-free","wheat free","celiac","coeliac"] },
+  { family: "soy",    allergenWords: ["soy","soya"],                                      phrases: ["soy-free","soy free","no soy","soya-free"] },
+  { family: "eggs",   allergenWords: ["egg","eggs"],                                      phrases: ["egg-free","egg free","no eggs","eggless"] },
+];
+
+const SEARCH_STOP_WORDS = new Set([
+  "i","am","looking","for","a","an","the","want","need","find","me","some","my","is","are","can",
+  "you","with","and","or","that","have","without","free","no","not","any","something","please",
+  "show","give","do","in","on","at","to","of","r","rands","budget","price","cheap","affordable",
+  "good","great","best","top","under","above","over","below",
+]);
+
+function parsePrompt(prompt: string): ParsedPrompt {
+  const lower = prompt.toLowerCase();
+  let maxPrice: number | null = null;
+  let minPrice: number | null = null;
+
+  const rangeMatch = lower.match(/r\s*(\d+(?:\.\d+)?)\s*(?:to|-)\s*r?\s*(\d+(?:\.\d+)?)/i);
+  if (rangeMatch) { minPrice = parseFloat(rangeMatch[1]); maxPrice = parseFloat(rangeMatch[2]); }
+
+  if (!maxPrice) {
+    const m = lower.match(/(?:under|below|less than|max(?:imum)?|budget(?:\s+of)?|no more than|at most|cheaper than)\s*r?\s*(\d+(?:\.\d+)?)/i);
+    if (m) maxPrice = parseFloat(m[1]);
+  }
+  if (!minPrice) {
+    const m = lower.match(/(?:above|over|more than|at least|minimum|starting from?)\s*r?\s*(\d+(?:\.\d+)?)/i);
+    if (m) minPrice = parseFloat(m[1]);
+  }
+
+  const allergenFree: string[] = [];
+  for (const entry of ALLERGEN_TRIGGERS) {
+    if (entry.phrases.some((p) => lower.includes(p))) {
+      if (!allergenFree.includes(entry.family)) allergenFree.push(entry.family);
+    }
+  }
+
+  const keywords = lower
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !SEARCH_STOP_WORDS.has(w) && !/^\d+$/.test(w));
+
+  return { maxPrice, minPrice, allergenFree, keywords, raw: prompt };
+}
+
+function scoreProduct(product: Product, parsed: ParsedPrompt): number {
+  const ep = product.isOnPromotion && product.promotionPrice != null ? product.promotionPrice : product.price;
+  const allergens = (product.allergens || []).map((a) => a.toLowerCase()).filter((a) => a !== "none");
+
+  if (parsed.maxPrice !== null && ep > parsed.maxPrice) return -1;
+  if (parsed.minPrice !== null && ep < parsed.minPrice) return -1;
+
+  for (const family of parsed.allergenFree) {
+    const entry = ALLERGEN_TRIGGERS.find((e) => e.family === family);
+    if (entry && allergens.some((pa) => entry.allergenWords.some((aw) => pa.includes(aw) || aw.includes(pa)))) return -1;
+  }
+
+  let score = 0;
+  if (parsed.maxPrice !== null) score += 8;
+  score += parsed.allergenFree.length * 12;
+
+  const text = [product.name, product.brand, product.category, product.ingredients,
+    ...(product.allergens || []), ...(product.certifications || [])].filter(Boolean).join(" ").toLowerCase();
+  for (const kw of parsed.keywords) { if (text.includes(kw)) score += 6; }
+
+  score += Math.min((product.salesCount ?? 0) * 0.3, 5);
+  if (product.isOnPromotion) score += 2;
+  return score;
+}
+
+function getMatchReasons(product: Product, parsed: ParsedPrompt): string[] {
+  const reasons: string[] = [];
+  const ep = product.isOnPromotion && product.promotionPrice != null ? product.promotionPrice : product.price;
+  if (parsed.maxPrice !== null && ep <= parsed.maxPrice) reasons.push(`under R${parsed.maxPrice}`);
+  if (parsed.minPrice !== null && ep >= parsed.minPrice) reasons.push(`over R${parsed.minPrice}`);
+  for (const family of parsed.allergenFree) reasons.push(`${family}-free`);
+  const text = [product.name, product.brand, product.category].filter(Boolean).join(" ").toLowerCase();
+  for (const kw of parsed.keywords) { if (text.includes(kw) && reasons.length < 3) reasons.push(kw); }
+  return reasons.slice(0, 3);
+}
+
 export default function BrowsePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +134,16 @@ export default function BrowsePage() {
   const { profile } = useUserProfile();
   const { addToCart, cart } = useCart();
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [activePrompt, setActivePrompt] = useState("");
+  const [parsedPrompt, setParsedPrompt] = useState<ParsedPrompt | null>(null);
+
+  useEffect(() => {
+    const p = searchParams.get("prompt") || "";
+    setActivePrompt(p);
+    setParsedPrompt(p.trim() ? parsePrompt(p) : null);
+  }, [searchParams]);
 
   const handleCloseModal = useCallback(() => setSelectedProduct(null), []);
 
@@ -107,26 +210,38 @@ export default function BrowsePage() {
   const effectivePrice = (p: Product) =>
     p.isOnPromotion && p.promotionPrice != null ? p.promotionPrice : p.price;
 
-  const filteredProducts = products
-    .filter((product) => {
-      const allergens = (product.allergens || []).map((a) => a.toLowerCase()).filter((a) => a !== "none");
-      if (safeForMe && profile) {
-        const userAllergies = (profile.allergies || profile.dietary?.allergies || []).map((a) => a.toLowerCase());
-        if (userAllergies.some((ua) => allergens.includes(ua))) return false;
-      }
-      const ep = effectivePrice(product);
-      if (priceMin !== "" && ep < parseFloat(priceMin)) return false;
-      if (priceMax !== "" && ep > parseFloat(priceMax)) return false;
-      if (selectedCategories.size > 0) {
-        if (!product.category || !selectedCategories.has(product.category)) return false;
-      }
-      return true;
-    })
-    .filter((product) => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return product.name.toLowerCase().includes(q) || (product.brand ?? "").toLowerCase().includes(q);
-    });
+  const applyBaseFilters = (product: Product): boolean => {
+    const allergens = (product.allergens || []).map((a) => a.toLowerCase()).filter((a) => a !== "none");
+    if (safeForMe && profile) {
+      const userAllergies = (profile.allergies || profile.dietary?.allergies || []).map((a) => a.toLowerCase());
+      if (userAllergies.some((ua) => allergens.includes(ua))) return false;
+    }
+    const ep = effectivePrice(product);
+    if (priceMin !== "" && ep < parseFloat(priceMin)) return false;
+    if (priceMax !== "" && ep > parseFloat(priceMax)) return false;
+    if (selectedCategories.size > 0) {
+      if (!product.category || !selectedCategories.has(product.category)) return false;
+    }
+    return true;
+  };
+
+  const promptScoredResults: { product: Product; score: number }[] | null = parsedPrompt
+    ? products
+        .filter(applyBaseFilters)
+        .map((p) => ({ product: p, score: scoreProduct(p, parsedPrompt) }))
+        .filter(({ score }) => score >= 0)
+        .sort((a, b) => b.score - a.score)
+    : null;
+
+  const filteredProducts: Product[] = promptScoredResults
+    ? promptScoredResults.map(({ product }) => product)
+    : products
+        .filter(applyBaseFilters)
+        .filter((product) => {
+          if (!search.trim()) return true;
+          const q = search.toLowerCase();
+          return product.name.toLowerCase().includes(q) || (product.brand ?? "").toLowerCase().includes(q);
+        });
 
   return (
     <>
@@ -150,8 +265,38 @@ export default function BrowsePage() {
 
       {/* Main content */}
       <main className="flex-1 p-6 overflow-y-auto bg-emerald-950">
+        {activePrompt && parsedPrompt && (
+          <div className="mb-5 rounded-xl bg-emerald-800/50 border border-emerald-700 px-4 py-3 flex items-start sm:items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-start sm:items-center gap-3 flex-wrap min-w-0">
+              <span className="text-base shrink-0">🔍</span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">Smart Search</p>
+                <p className="text-white text-sm font-medium">&#34;{activePrompt}&#34;</p>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {parsedPrompt.maxPrice != null && (
+                  <span className="rounded-full bg-blue-900/50 border border-blue-700 text-blue-300 text-xs px-2.5 py-0.5">under R{parsedPrompt.maxPrice}</span>
+                )}
+                {parsedPrompt.minPrice != null && (
+                  <span className="rounded-full bg-blue-900/50 border border-blue-700 text-blue-300 text-xs px-2.5 py-0.5">over R{parsedPrompt.minPrice}</span>
+                )}
+                {parsedPrompt.allergenFree.map((a) => (
+                  <span key={a} className="rounded-full bg-green-900/50 border border-green-700 text-green-300 text-xs px-2.5 py-0.5">no {a}</span>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={() => { setActivePrompt(""); setParsedPrompt(null); router.replace("/browse"); }}
+              className="rounded-lg border border-emerald-700 px-3 py-1.5 text-xs text-emerald-400 hover:bg-emerald-800 hover:text-white transition-colors shrink-0"
+            >
+              Clear ✕
+            </button>
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h1 className="text-3xl font-bold text-white">All Products</h1>
+          <h1 className="text-3xl font-bold text-white">
+            {activePrompt ? <>{filteredProducts.length} result{filteredProducts.length !== 1 ? "s" : ""}</> : "All Products"}
+          </h1>
           <div className="relative w-full sm:w-72">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
@@ -192,13 +337,17 @@ export default function BrowsePage() {
             <svg className="h-12 w-12 text-emerald-700 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
             </svg>
-            <p className="text-emerald-200 font-medium mb-1">No products match your filters.</p>
-            <p className="text-emerald-500 text-sm mb-4">Try adjusting your search or filters.</p>
+            <p className="text-emerald-200 font-medium mb-1">
+              {activePrompt ? "No products match your search." : "No products match your filters."}
+            </p>
+            <p className="text-emerald-500 text-sm mb-4">
+              {activePrompt ? "Try rephrasing your query or relaxing the price / allergen requirements." : "Try adjusting your search or filters."}
+            </p>
             <button
-              onClick={() => { setSearch(""); setPriceMin(""); setPriceMax(""); setSelectedCategories(new Set()); setSafeForMe(false); }}
+              onClick={() => { setSearch(""); setPriceMin(""); setPriceMax(""); setSelectedCategories(new Set()); setSafeForMe(false); setActivePrompt(""); setParsedPrompt(null); router.replace("/browse"); }}
               className="rounded-lg border border-emerald-600 px-4 py-2 text-sm text-emerald-300 hover:bg-emerald-800 transition-colors"
             >
-              Clear all filters
+              {activePrompt ? "Clear search" : "Clear all filters"}
             </button>
           </div>
         ) : (
@@ -240,6 +389,13 @@ export default function BrowsePage() {
                     )}
                   </div>
                 </div>
+                {parsedPrompt && getMatchReasons(p, parsedPrompt).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {getMatchReasons(p, parsedPrompt).map((r) => (
+                      <span key={r} className="rounded-full bg-emerald-700/60 border border-emerald-600 text-emerald-300 text-xs px-2 py-0.5">✓ {r}</span>
+                    ))}
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2 mb-3">
                   {p.allergens && p.allergens.some((a) => a.toLowerCase() !== "none") ? (
                     p.allergens.filter((a) => a.toLowerCase() !== "none").map((a) => (

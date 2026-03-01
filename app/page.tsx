@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useCart } from "./context/CartContext";
@@ -42,6 +43,14 @@ export default function Home() {
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const [searchPrompt, setSearchPrompt] = useState("");
+  const router = useRouter();
+
+  const handlePromptSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchPrompt.trim()) return;
+    router.push(`/browse?prompt=${encodeURIComponent(searchPrompt.trim())}`);
+  };
 
   const handleCloseModal = useCallback(() => setSelectedProduct(null), []);
 
@@ -253,9 +262,28 @@ export default function Home() {
             <h1 className="text-4xl font-bold text-white mb-3">
               {profile?.displayName ? `Welcome back, ${profile.displayName.split(" ")[0]}!` : "Welcome to SafeBite"}
             </h1>
-            <p className="text-emerald-300 text-lg leading-relaxed mb-6">
+            <p className="text-emerald-300 text-lg leading-relaxed mb-5">
               Shop safely with allergen-aware product discovery. Find deals, top picks, and food that works for you.
             </p>
+            <form onSubmit={handlePromptSearch} className="mb-5">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={searchPrompt}
+                  onChange={(e) => setSearchPrompt(e.target.value)}
+                  placeholder='e.g. "dairy-free snacks under R50" or "nut-free breakfast"'
+                  className="flex-1 rounded-xl bg-emerald-900/80 border border-emerald-700 px-4 py-3 text-sm text-white placeholder-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!searchPrompt.trim()}
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed px-5 py-3 text-sm font-semibold text-white transition-colors shrink-0"
+                >
+                  Search
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-emerald-500">Describe what you need — allergen requirements, price range, category, etc.</p>
+            </form>
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/browse"
