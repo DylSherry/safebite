@@ -6,6 +6,8 @@ export type CartItem = {
   id: string;
   name: string;
   price: number;
+  /** Original (non-discounted) price – present only when product is on promotion */
+  originalPrice?: number;
   quantity: number;
   image_url?: string;
   brand?: string;

@@ -46,16 +46,25 @@ export default function CartPage() {
             {cart.map((item) => (
               <div key={item.id} className="flex gap-4 bg-emerald-900 rounded-lg shadow p-4 border border-emerald-800">
                 {item.image_url && (
-                  <div className="h-24 w-24 rounded overflow-hidden bg-emerald-800 flex-shrink-0">
+                  <div className="h-24 w-24 rounded overflow-hidden bg-emerald-800 shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
                   </div>
                 )}
 
-                <div className="flex-grow">
+                <div className="grow">
                   <h3 className="font-medium text-white">{item.name}</h3>
                   {item.brand && <p className="text-sm text-emerald-300">{item.brand}</p>}
-                  <p className="text-sm font-semibold text-white mt-2">R{item.price.toFixed(2)}</p>
+                  <p className="text-sm font-semibold text-white mt-2">
+                    {item.originalPrice != null ? (
+                      <>
+                        <span className="text-amber-300">R{item.price.toFixed(2)}</span>
+                        <span className="ml-1.5 text-emerald-600 line-through text-xs">R{item.originalPrice.toFixed(2)}</span>
+                      </>
+                    ) : (
+                      <span>R{item.price.toFixed(2)}</span>
+                    )}
+                  </p>
                 </div>
 
                 <div className="flex flex-col items-end justify-between">

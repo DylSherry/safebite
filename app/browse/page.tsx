@@ -68,10 +68,12 @@ export default function BrowsePage() {
   };
 
   const handleQuickAdd = (product: Product) => {
+    const effectiveP = product.isOnPromotion && product.promotionPrice != null ? product.promotionPrice : product.price;
     addToCart({
       id: product.id,
       name: product.name,
-      price: product.price,
+      price: effectiveP,
+      originalPrice: product.isOnPromotion && product.promotionPrice != null ? product.price : undefined,
       image_url: product.image_url,
       brand: product.brand,
       allergens: product.allergens,
